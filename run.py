@@ -19,30 +19,8 @@ def run(trace_filename: str, cache_size: int):
     :param cache_size:
     :return:
     """
-    # with open(trace_filename) as f:
-    #     data = json.load(f)
-    data = [
-        {"key": 1, "size": 10},
-        {"key": 2, "size": 10},
-        {"key": 3, "size": 10},
-        {"key": 4, "size": 10},
-        {"key": 5, "size": 10},
-        {"key": 1, "size": 10},
-        {"key": 2, "size": 10},
-        {"key": 3, "size": 10},
-        {"key": 4, "size": 10},
-        {"key": 5, "size": 10},
-        {"key": 6, "size": 10},
-        {"key": 7, "size": 10},
-        {"key": 8, "size": 10},
-        {"key": 9, "size": 10},
-        {"key": 10, "size": 10},
-        {"key": 6, "size": 10},
-        {"key": 7, "size": 10},
-        {"key": 8, "size": 10},
-        {"key": 9, "size": 10},
-        {"key": 10, "size": 10},
-    ]
+    with open(trace_filename) as f:
+        data = json.load(f)
     assert isinstance(data, list)
     cache_traces: List[CacheTrace] = []
     total_count = len(data)
@@ -52,10 +30,12 @@ def run(trace_filename: str, cache_size: int):
         cache_traces.append(cache_trace_obj)
         total_size += cache_trace_obj.size
 
+    # how can we apply bloom filters in code
     for cache_cls in cache_cls_list:
         cache = cache_cls(cache_size)
         miss_count = 0
         miss_byte = 0
+
         for cache_trace in cache_traces:
             val = cache.get(cache_trace.key)
             if not val:

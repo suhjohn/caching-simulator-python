@@ -90,13 +90,14 @@ class LRUCache(SimulatedCache):
         node: LRUNode = self.map.get(key)
         # reset pointers for existing node
         if node is not None:
-            self._touch(node)
+            self._reset_links(node)
             self.curr_capacity -= node.size
             node.size = size
         else:
             node = LRUNode(key, size, None, None)
-            self._add_to_head(node)
             self.map[node.key] = node
+
+        self._add_to_head(node)
         self.curr_capacity += node.size
 
     def _add_to_head(self, node):
@@ -108,7 +109,7 @@ class LRUCache(SimulatedCache):
             node.prev = self.most_recent
             self.most_recent = node
 
-    def _touch(self, node):
+    def _reset_links(self, node):
         if node.next:
             if node.prev:
                 node.next.prev = node.prev
@@ -119,12 +120,12 @@ class LRUCache(SimulatedCache):
                 node.prev.next = node.next
             else:
                 node.prev.next = None
-        self._add_to_head(node)
 
     def get(self, key: int):
         node = self.map.get(key)
         if not node:
             return None
+        self._reset_links(node)
         self._add_to_head(node)
         return node.size
 
