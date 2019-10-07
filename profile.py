@@ -14,10 +14,7 @@ node = request.RawPC("node")
 
 node.disk_image = "urn:publicid:IDN+emulab.net+image+emulab-ops//UBUNTU18-64-STD"
 
-node.cores = 16
-
-node.ram = 1024 * 32
-
-node.disk = 1000
+bs = node.Blockstore("bs", "/data")
+bs.size = "150GB"
 
 portal.context.printRequestRSpec()
