@@ -1,0 +1,72 @@
+{
+  "lruSize": 50,
+  "testData": [
+    {
+      "key": 1,
+      "size": 10,
+      "event": "put"
+    },
+    {
+      "key": 2,
+      "size": 10,
+      "event": "put"
+    },
+    {
+      "key": 3,
+      "size": 10,
+      "event": "put"
+    },
+    {
+      "key": 4,
+      "size": 10,
+      "event": "put"
+    },
+    {
+      "key": 5,
+      "size": 10,
+      "event": "put"
+    },
+    {
+      "key": 1,
+      "size": 10,
+      "event": "put"
+    },
+    {
+      "key": 6,
+      "size": 10,
+      "event": "put"
+    },
+    {
+      "key": 3,
+      "size": 10,
+      "event": "put"
+    },
+    {
+      "key": 7,
+      "size": 10,
+      "event": "put"
+    }
+  ],
+  "expectedResponse": [
+    {
+      "key": 1,
+      "event": "exists",
+      "value": true
+    },
+    {
+      "key": 2,
+      "event": "exists",
+      "value": false
+    },
+    {
+      "key": 3,
+      "event": "exists",
+      "value": true
+    },
+    {
+      "key": 4,
+      "event": "exists",
+      "value": false
+    }
+  ]
+}

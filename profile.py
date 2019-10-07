@@ -5,15 +5,17 @@ Wait for the profile instance to start, then click on the node in the topology a
 """
 
 import geni.portal as portal
+# Import the ProtoGENI library.
 import geni.rspec.pg as rspec
+# Import the emulab extensions library.
+import geni.rspec.emulab
+
 
 # Create a Request object to start building the RSpec.
 request = portal.context.makeRequestRSpec()
 
 node = request.RawPC("node")
-
 node.disk_image = "urn:publicid:IDN+emulab.net+image+emulab-ops//UBUNTU18-64-STD"
-
 bs = node.Blockstore("bs", "/data")
 bs.size = "150GB"
 

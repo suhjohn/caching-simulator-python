@@ -1,0 +1,22 @@
+{
+  "lruSize": 50,
+  "testData": [
+    {
+      "key": 1,
+      "size": 50,
+      "event": "put"
+    },
+    {
+      "key": 2,
+      "size": 10,
+      "event": "put"
+    }
+  ],
+  "expectedResponse": [
+    {
+      "key": 1,
+      "event": "exists",
+      "value": false
+    }
+  ]
+}
