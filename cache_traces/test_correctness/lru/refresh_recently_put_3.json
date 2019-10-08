@@ -1,63 +1,52 @@
 {
-  "lruSize": 50,
-  "testData": [
+  "size": 50,
+  "traces": [
     {
       "key": 1,
-      "size": 10,
-      "event": "put"
+      "size": 10
     },
     {
       "key": 2,
-      "size": 10,
-      "event": "put"
+      "size": 10
     },
     {
       "key": 3,
-      "size": 10,
-      "event": "put"
+      "size": 10
     },
     {
       "key": 4,
-      "size": 10,
-      "event": "put"
+      "size": 10
     },
     {
       "key": 5,
-      "size": 10,
-      "event": "put"
+      "size": 10
     },
     {
       "key": 1,
-      "size": 10,
-      "event": "put"
+      "size": 10
     },
     {
       "key": 2,
-      "size": 10,
-      "event": "put"
+      "size": 10
     },
     {
       "key": 6,
-      "size": 10,
-      "event": "put"
+      "size": 10
     },
     {
       "key": 7,
-      "size": 10,
-      "event": "put"
+      "size": 10
     },
     {
       "key": 8,
-      "size": 10,
-      "event": "put"
+      "size": 10
     },
     {
       "key": 9,
-      "size": 10,
-      "event": "put"
+      "size": 10
     }
   ],
-  "expectedResponse": [
+  "expectedResponses": [
     {
       "key": 2,
       "event": "exists",

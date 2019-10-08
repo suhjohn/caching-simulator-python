@@ -1,23 +1,20 @@
 {
-  "lruSize": 50,
-  "testData": [
+  "size": 50,
+  "traces": [
     {
       "key": 1,
-      "size": 10,
-      "event": "put"
+      "size": 10
     },
     {
       "key": 1,
-      "size": 50,
-      "event": "put"
+      "size": 50
     },
     {
       "key": 2,
-      "size": 10,
-      "event": "get"
+      "size": 10
     }
   ],
-  "expectedResponse": [
+  "expectedResponses": [
     {
       "key": 1,
       "event": "exists",
@@ -28,5 +25,5 @@
       "event": "exists",
       "value": true
     }
-  ],
+  ]
 }

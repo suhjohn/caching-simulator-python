@@ -8,7 +8,6 @@ CacheTrace = namedtuple("CacheTrace", ['key', 'size'])
 cache_cls_list: List[caches.Cache] = [
     caches.FIFOCache,
     caches.LRUCache,
-    # caches.RandomCache
 ]
 
 
@@ -41,12 +40,12 @@ def run(trace_filename: str, cache_size: int):
             if not val:
                 miss_count += 1
                 miss_byte += cache_trace.size
-                cache.put(cache_trace.key, cache_trace.size)
+                cache.put(cache_trace.key, None, cache_trace.size)
         print(f"{str(cache)}")
         print(f"Object Miss Rate: {miss_count/total_count}")
         print(f"Byte Miss Rate: {miss_byte/total_size}")
 
 
 if __name__ == "__main__":
-    fn = "sample_cache_trace.json"
+    fn = "simple_cache_trace.json"
     run(fn, 50)

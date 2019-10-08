@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from collections import deque
-from typing import TypeVar, Dict
+from typing import TypeVar, Dict, Tuple, NewType
 
 __all__ = [
     "Cache",
@@ -8,21 +8,23 @@ __all__ = [
     "LRUCache"
 ]
 
+Item = TypeVar('Item')
 
-class SimulatedCache(ABC):
+
+class BaseCache(ABC):
     def __init__(self, capacity):
         self.capacity = capacity
 
     @abstractmethod
-    def put(self, key: int, size: int):
+    def put(self, key: int, value: Item, size: int):
         pass
 
     @abstractmethod
-    def get(self, key: int):
+    def get(self, key: int) -> Tuple[Item, int]:
         pass
 
 
-class FIFOCache(SimulatedCache):
+class FIFOCache(BaseCache):
     def __init__(self, capacity):
         super().__init__(capacity)
         self.curr_capacity = 0
@@ -32,7 +34,7 @@ class FIFOCache(SimulatedCache):
     def __str__(self):
         return f"{FIFOCache}: {self.curr_capacity}/{self.capacity}"
 
-    def put(self, key: int, size: int):
+    def put(self, key: int, value: Item, size: int):
         while self.capacity < self.curr_capacity + size:
             popped_key, popped_size = self.q.pop()
             self.curr_capacity -= popped_size
@@ -43,7 +45,7 @@ class FIFOCache(SimulatedCache):
         self.curr_capacity += size
 
     def get(self, key: int):
-        return self.items.get(key)
+        return None, self.items.get(key)
 
 
 class LRUNode:
@@ -53,8 +55,10 @@ class LRUNode:
         self.prev = prev
         self.next = next
 
+    def __repr__(self):
+        return f"LRUNode(key={self.key}, size={self.size})"
 
-class LRUCache(SimulatedCache):
+class LRUCache(BaseCache):
     def __init__(self, capacity):
         """
         [] capacity 5
@@ -77,13 +81,13 @@ class LRUCache(SimulatedCache):
     def __str__(self):
         return f"{LRUCache}: {self.curr_capacity}/{self.capacity}"
 
-    def put(self, key: int, size: int):
-        assert size < self.capacity
-
+    def put(self, key: int, value: Item, size: int):
+        assert size <= self.capacity, f"size {size} is greater than capacity {self.capacity}"
         while self.capacity < self.curr_capacity + size:
             to_evict = self.least_recent
             self.curr_capacity -= to_evict.size
-            self.least_recent.next.prev = None
+            if self.least_recent.next:
+                self.least_recent.next.prev = None
             self.least_recent = self.least_recent.next
             del self.map[to_evict.key]
 
@@ -124,13 +128,13 @@ class LRUCache(SimulatedCache):
     def get(self, key: int):
         node = self.map.get(key)
         if not node:
-            return None
+            return None, None
         self._reset_links(node)
         self._add_to_head(node)
-        return node.size
+        return None, node.size
 
 
-class RandomCache(SimulatedCache):
+class RandomCache(BaseCache):
     def __init__(self, capacity):
         super().__init__(capacity)
         self.curr_capacity = 0
@@ -138,11 +142,11 @@ class RandomCache(SimulatedCache):
     def __str__(self):
         return f"{RandomCache}: {self.curr_capacity}/{self.capacity}"
 
-    def put(self, key: int, size: int):
+    def put(self, key: int, value: Item, size: int):
         pass
 
     def get(self, key: int):
         pass
 
 
-Cache = TypeVar("Cache", FIFOCache, LRUCache, RandomCache)
+Cache = NewType("Cache", BaseCache)
