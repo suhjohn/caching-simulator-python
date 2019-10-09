@@ -5,9 +5,9 @@ from test_utils import cache_info_map, TraceInfo
 def assert_exists(cache_obj: caches.Cache, key, should_exist: bool):
     value, size = cache_obj.get(key)
     if should_exist:
-        assert value is not None or size is not None
+        assert value is not None or size is not 0
     else:
-        assert value is None and size is None
+        assert value is None and size is 0
 
 
 def assert_size(cache_obj: caches.Cache, key, expected_size: int):
@@ -20,7 +20,7 @@ def execute_traces(cache_cls: caches.Cache, trace_info: TraceInfo):
     for trace in trace_info.traces:
         key = trace["key"]
         val, size = cache_obj.get(key)
-        if val is None and size is None:
+        if val is None and size is 0:
             # miss
             pass
         cache_obj.put(key, None, trace["size"])

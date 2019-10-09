@@ -1,51 +1,44 @@
-import json
-from collections import namedtuple
 from typing import List
 
-import caches
-
-CacheTrace = namedtuple("CacheTrace", ['key', 'size'])
-cache_cls_list: List[caches.Cache] = [
-    caches.FIFOCache,
-    caches.LRUCache,
-]
+import constants
+from caches import LRUCache
+from caching_stack import SimulatedCachingStack
+from filters import NullFilter, BloomFilter
+from traces import TraceInfo, parse_tr, Trace, FullCacheTrace
 
 
-def run(trace_filename: str, cache_size: int):
+def run_simulation(trace_info: TraceInfo, caching_stack: SimulatedCachingStack):
+    miss_count = 0
+    miss_byte = 0
+
+    cache_traces: List[Trace] = trace_info.read()
+    for cache_trace in cache_traces:
+        val, size = caching_stack.get(cache_trace.key)
+        if not val and size == 0:
+            miss_count += 1
+            miss_byte += cache_trace.size
+            caching_stack.put(cache_trace.key, None, cache_trace.size)
+
+    print(f"{caching_stack}")
+    print(f"Object Miss Rate: {miss_count/trace_info.total_count}")
+    print(f"Byte Miss Rate: {miss_byte/trace_info.total_size}")
+
+
+def run():
     """
-    cache_size in bytes
-    :param trace_filename:
-    :param cache_size:
-    :return:
     """
-    with open(trace_filename) as f:
-        data = json.load(f)
-    assert isinstance(data, list)
-    cache_traces: List[CacheTrace] = []
-    total_count = len(data)
-    total_size = 0
-    for cache_trace in data:
-        cache_trace_obj = CacheTrace(**cache_trace)
-        cache_traces.append(cache_trace_obj)
-        total_size += cache_trace_obj.size
+    capacity = constants.CACHE_CAPACITY
+    bloom_filter_m = constants.BLOOM_FILTER_M
+    bloom_filter_k = constants.BLOOM_FILTER_K
+    filename = "cache_traces/memc_200m_100mb_100000.tr"
+    filter_instance = NullFilter()
+    filter_instance = BloomFilter(bloom_filter_m, bloom_filter_k)
+    cache_instance = LRUCache(capacity)
 
-    # how can we apply bloom filters in code
-    for cache_cls in cache_cls_list:
-        cache = cache_cls(cache_size)
-        miss_count = 0
-        miss_byte = 0
-
-        for cache_trace in cache_traces:
-            val = cache.get(cache_trace.key)
-            if not val:
-                miss_count += 1
-                miss_byte += cache_trace.size
-                cache.put(cache_trace.key, None, cache_trace.size)
-        print(f"{str(cache)}")
-        print(f"Object Miss Rate: {miss_count/total_count}")
-        print(f"Byte Miss Rate: {miss_byte/total_size}")
+    caching_stack = SimulatedCachingStack(filter_instance, cache_instance)
+    trace_info = FullCacheTrace(filename, parse_tr)
+    run_simulation(trace_info, caching_stack)
 
 
 if __name__ == "__main__":
-    fn = "simple_cache_trace.json"
-    run(fn, 50)
+    run()
