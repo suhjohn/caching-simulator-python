@@ -3,6 +3,8 @@ from enum import IntEnum
 from typing import Dict, Tuple, NewType, Any
 from collections import OrderedDict
 
+from logger import log_error_too_large
+
 
 class CacheState(IntEnum):
     PRE_WARMUP = 0
@@ -52,7 +54,7 @@ class LRUCache(BaseCache):
     def put(self, key: int, size: int) -> bool:
         # object feasible to store?
         if size > self.capacity:
-            print(f"Object is too large to store: LRUCache({self.capacity}) put({key}, {size})")
+            log_error_too_large(self.capacity, key, size)
             return False
 
         while self.curr_capacity + size > self.capacity:

@@ -22,7 +22,7 @@ class SimulatedCachingStack:
         self.cache_instance.put(key, size)
         return True
 
-    def get(self, key: int) -> Tuple[Any, int]:
+    def get(self, key: int):
         if self.filter_instance.should_filter(key, 0):
-            return None, 0
+            return None
         return self.cache_instance.get(key)
