@@ -1,3 +1,5 @@
+import sys
+
 import constants
 from caches import LRUCache, CacheState
 from caching_stack import SimulatedCachingStack
@@ -23,15 +25,16 @@ def run_simulation(trace_iterator: CacheTraceIterator, caching_stack: SimulatedC
     print(trace_iterator.total_size)
 
 
-def run(filter_instance, cache_instance):
-    filename = "cache_traces/sample_trace.tr"
+def run(filter_instance, cache_instance, filepath):
     caching_stack = SimulatedCachingStack(filter_instance, cache_instance)
-    trace_iterator = CacheTraceIterator(filename, parse_tr_line)
+    trace_iterator = CacheTraceIterator(filepath, parse_tr_line)
     run_simulation(trace_iterator, caching_stack)
 
 
 if __name__ == "__main__":
-    capacity = constants.CACHE_CAPACITY
+    args = sys.argv[1:]
+    filepath = args[0]
+    capacity = args[1]
     filter_instance = NullFilter()
     cache_instance = LRUCache(capacity)
-    run(filter_instance, cache_instance)
+    run(filter_instance, cache_instance, filepath)
