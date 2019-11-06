@@ -28,11 +28,11 @@ def run_simulation(trace_iterator: CacheTraceIterator, caching_stack: SimulatedC
             log_window(current_trace_index, trace_iterator, miss_count, miss_byte)
         current_trace_index += 1
 
-    print("Results")
-    print(f"Object Miss Rate: {miss_count/trace_iterator.total_count}")
-    print(f"Byte Miss Rate: {miss_byte/trace_iterator.total_size}")
-    print(trace_iterator.total_count)
-    print(trace_iterator.total_size)
+    print("Results", flush=True)
+    print(f"Object Miss Rate: {miss_count/trace_iterator.total_count}", flush=True)
+    print(f"Byte Miss Rate: {miss_byte/trace_iterator.total_size}", flush=True)
+    print(trace_iterator.total_count, flush=True)
+    print(trace_iterator.total_size, flush=True)
 
 
 def run(filter_instance, cache_instance, filepath):
