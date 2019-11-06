@@ -16,13 +16,13 @@ class SimulatedCachingStack:
     def __repr__(self):
         return f"SimulatedCachingStack(filter={self.filter_instance}, cache={self.cache_instance})"
 
-    def put(self, key: int, value: Any, size: int):
-        if self.filter_instance.should_filter(key, value, size):
+    def put(self, key: int, size: int):
+        if self.filter_instance.should_filter(key, size):
             return False
-        self.cache_instance.put(key, value, size)
+        self.cache_instance.put(key, size)
         return True
 
     def get(self, key: int) -> Tuple[Any, int]:
-        if self.filter_instance.should_filter(key, None, 0):
+        if self.filter_instance.should_filter(key, 0):
             return None, 0
         return self.cache_instance.get(key)

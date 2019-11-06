@@ -10,12 +10,12 @@ def get_hash(string: str) -> int:
 
 class IFilter(ABC):
     @abstractmethod
-    def should_filter(self, key, value, size):
+    def should_filter(self, key, size):
         pass
 
 
 class NullFilter(IFilter):
-    def should_filter(self, key, value, size):
+    def should_filter(self, key, size):
         return False
 
 
@@ -23,7 +23,7 @@ class BypassFilter(IFilter):
     def __init__(self, threshold_size):
         self.threshold_size = threshold_size
 
-    def should_filter(self, key, value, size):
+    def should_filter(self, key, size):
         return size > self.threshold_size
 
 
@@ -44,7 +44,7 @@ class BloomFilter(IFilter):
         self.hash_fun = get_hash
         self.false_positive = 0
 
-    def should_filter(self, key, value, size) -> bool:
+    def should_filter(self, key, size) -> bool:
         if self.exists(key):
             return False
         self.put(key)

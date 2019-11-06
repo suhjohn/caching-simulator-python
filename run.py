@@ -1,44 +1,37 @@
-from typing import List
-
 import constants
-from caches import LRUCache
+from caches import LRUCache, CacheState
 from caching_stack import SimulatedCachingStack
-from filters import NullFilter, BloomFilter
-from traces import TraceInfo, parse_tr, Trace, FullCacheTrace
+from filters import NullFilter
+from traces import parse_tr_line, Trace, CacheTraceIterator
 
 
-def run_simulation(trace_info: TraceInfo, caching_stack: SimulatedCachingStack):
+def run_simulation(trace_iterator: CacheTraceIterator, caching_stack: SimulatedCachingStack):
     miss_count = 0
     miss_byte = 0
 
-    cache_traces: List[Trace] = trace_info.read()
-    for cache_trace in cache_traces:
-        val, size = caching_stack.get(cache_trace.key)
-        if not val and size == 0:
+    for cache_trace in trace_iterator:
+        size = caching_stack.get(cache_trace.key)
+        if size is None and caching_stack.cache_instance.state == CacheState.POST_WARMUP:
             miss_count += 1
             miss_byte += cache_trace.size
-            caching_stack.put(cache_trace.key, None, cache_trace.size)
+            caching_stack.put(cache_trace.key, cache_trace.size)
 
     print(f"{caching_stack}")
-    print(f"Object Miss Rate: {miss_count/trace_info.total_count}")
-    print(f"Byte Miss Rate: {miss_byte/trace_info.total_size}")
+    print(f"Object Miss Rate: {miss_count/trace_iterator.total_count}")
+    print(f"Byte Miss Rate: {miss_byte/trace_iterator.total_size}")
+    print(trace_iterator.total_count)
+    print(trace_iterator.total_size)
 
 
-def run():
-    """
-    """
-    capacity = constants.CACHE_CAPACITY
-    bloom_filter_m = constants.BLOOM_FILTER_M
-    bloom_filter_k = constants.BLOOM_FILTER_K
-    filename = "cache_traces/memc_200m_100mb_100000.tr"
-    filter_instance = NullFilter()
-    filter_instance = BloomFilter(bloom_filter_m, bloom_filter_k)
-    cache_instance = LRUCache(capacity)
-
+def run(filter_instance, cache_instance):
+    filename = "cache_traces/sample_trace.tr"
     caching_stack = SimulatedCachingStack(filter_instance, cache_instance)
-    trace_info = FullCacheTrace(filename, parse_tr)
-    run_simulation(trace_info, caching_stack)
+    trace_iterator = CacheTraceIterator(filename, parse_tr_line)
+    run_simulation(trace_iterator, caching_stack)
 
 
 if __name__ == "__main__":
-    run()
+    capacity = constants.CACHE_CAPACITY
+    filter_instance = NullFilter()
+    cache_instance = LRUCache(capacity)
+    run(filter_instance, cache_instance)
