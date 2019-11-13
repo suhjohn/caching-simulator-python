@@ -13,6 +13,7 @@ def run_simulation(trace_iterator, caching_stack):
     miss_count = 0
     miss_byte = 0
     current_trace_index = 0
+
     window_size = 1000000
     start_time = datetime.now()
     for cache_trace in trace_iterator:
@@ -42,16 +43,12 @@ def run_simulation(trace_iterator, caching_stack):
     print(res)
 
 
-def run(filter_instance, cache_instance, filepath):
-    caching_stack = SimulatedCachingStack(filter_instance, cache_instance)
-    trace_iterator = CacheTraceIterator(filepath, parse_tr_line)
-    run_simulation(trace_iterator, caching_stack)
-
-
 if __name__ == "__main__":
     args = sys.argv[1:]
     filepath = args[0]
     capacity = int(args[1])
     filter_instance = NullFilter()
     cache_instance = LRUCache(capacity)
-    run(filter_instance, cache_instance, filepath)
+    caching_stack = SimulatedCachingStack(filter_instance, cache_instance)
+    trace_iterator = CacheTraceIterator(filepath, parse_tr_line)
+    run_simulation(trace_iterator, caching_stack)
