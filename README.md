@@ -9,7 +9,7 @@ Reports back the object miss rate and byte miss rate.
 To execute:
 
 ```
-python run.py
+python run.py trace_filepath cache_size
 ```
 
 Change constants in constants.py for experimenting different values.
