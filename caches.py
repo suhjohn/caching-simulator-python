@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from enum import IntEnum
-from typing import Dict, Tuple, NewType, Any
+from typing import NewType
 from collections import OrderedDict
 
 from logger import log_error_too_large
@@ -17,15 +17,15 @@ class BaseCache(ABC):
         self._is_post_hydrate = False
 
     @abstractmethod
-    def put(self, key: int, size: int) -> bool:
+    def put(self, key, size):
         pass
 
     @abstractmethod
-    def get(self, key: int) -> int:
+    def get(self, key):
         pass
 
     @property
-    def state(self) -> CacheState:
+    def state(self):
         if self._is_post_hydrate:
             return CacheState.POST_WARMUP
         return CacheState.PRE_WARMUP
@@ -46,12 +46,12 @@ class LRUCache(BaseCache):
         """
         super().__init__(capacity)
         self.curr_capacity = 0
-        self.map: OrderedDict = OrderedDict()
+        self.map = OrderedDict()
 
     def __str__(self):
-        return f"{LRUCache}: {self.curr_capacity}/{self.capacity}"
+        return "LRU"
 
-    def put(self, key: int, size: int) -> bool:
+    def put(self, key, size):
         # object feasible to store?
         if size > self.capacity:
             log_error_too_large(self.capacity, key, size)
@@ -70,7 +70,7 @@ class LRUCache(BaseCache):
         self.curr_capacity += self.map[key]
         return True
 
-    def get(self, key: int):
+    def get(self, key):
         if key not in self.map:
             return None
         self.map.move_to_end(key)

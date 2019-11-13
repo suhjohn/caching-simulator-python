@@ -1,12 +1,6 @@
 from abc import ABC, abstractmethod
 from typing import NewType
 
-import xxhash
-
-
-def get_hash(string: str) -> int:
-    return xxhash.xxh32(string).intdigest()
-
 
 class IFilter(ABC):
     @abstractmethod
@@ -29,20 +23,17 @@ class BypassFilter(IFilter):
 
 class BloomFilter(IFilter):
     """
-    Bloom Filter
-    Adapted From: https://glowingpython.blogspot.com/2013/01/bloom-filter.html
+    Bloom Filter implementation.
+    Assumes that the key is integer.
     """
 
-    def __init__(self, m: int, k: int):
+    def __init__(self, m, k):
         """
-         m, size of the vector
-         k, number of hash fnctions to compute
+         m: int, size of the filter
+         k: int, number of hash fnctions to compute
         """
-        self.m = m
-        self.vector = [0] * m
-        self.k = k
-        self.hash_fun = get_hash
-        self.false_positive = 0
+        self._filters = [set() for _ in range(2)]
+        self._m = m
 
     def should_filter(self, key, size) -> bool:
         if self.exists(key):
@@ -52,16 +43,17 @@ class BloomFilter(IFilter):
 
     def put(self, key):
         """ insert the pair (key,value) in the database """
-        for i in range(self.k):
-            self.vector[self.hash_fun(str(key) + str(i)) % self.m] = 1
+        pass
 
     def exists(self, key):
         """ check if key is exists in the filter
             using the filter mechanism """
-        for i in range(self.k):
-            if self.vector[self.hash_fun(str(key) + str(i)) % self.m] == 0:
-                return False  # the key doesn't exist
-        return True  # the key can be in the data set
+        if not len(self._filters[self._current_filter]) < self._m:
+            if len(self._filters[1 - self._current_filter]) > 0:
+                self._filters[1 - self._current_filter] = set()
+            self._current_filter = 1 - self._current_filter
+
+        return False
 
 
 Filter = NewType("Filter", IFilter)

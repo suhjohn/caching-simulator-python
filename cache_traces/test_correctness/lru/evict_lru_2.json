@@ -1,0 +1,61 @@
+{
+  "size": 50,
+  "traces": [
+    {
+      "key": 1,
+      "size": 10
+    },
+    {
+      "key": 2,
+      "size": 10
+    },
+    {
+      "key": 3,
+      "size": 10
+    },
+    {
+      "key": 4,
+      "size": 10
+    },
+    {
+      "key": 5,
+      "size": 10
+    },
+    {
+      "key": 6,
+      "size": 40
+    }
+  ],
+  "expectedResponses": [
+    {
+      "key": 1,
+      "event": "exists",
+      "value": false
+    },
+    {
+      "key": 2,
+      "event": "exists",
+      "value": false
+    },
+    {
+      "key": 3,
+      "event": "exists",
+      "value": false
+    },
+    {
+      "key": 4,
+      "event": "exists",
+      "value": false
+    },
+    {
+      "key": 5,
+      "event": "exists",
+      "value": true
+    },
+    {
+      "key": 6,
+      "event": "exists",
+      "value": true
+    }
+  ]
+}

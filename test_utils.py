@@ -37,6 +37,7 @@ class TraceInfo:
         self.traces = traces
         self.expected_responses = expected_responses
 
+
 def collect_trace_infos(dir_path):
     test_trace_filepaths = []
     try:
@@ -73,7 +74,7 @@ cache_info_map = {
 }
 
 
-def assert_exists(cache_obj: caches.Cache, key, should_exist: bool):
+def _assert_exists(cache_obj: caches.Cache, key, should_exist: bool):
     size = cache_obj.get(key)
     if should_exist:
         assert size is not None
@@ -81,7 +82,7 @@ def assert_exists(cache_obj: caches.Cache, key, should_exist: bool):
         assert size is None
 
 
-def assert_size(cache_obj: caches.Cache, key, expected_size: int):
+def _assert_size(cache_obj: caches.Cache, key, expected_size: int):
     size = cache_obj.get(key)
     assert size == expected_size
 
@@ -100,7 +101,12 @@ def execute_traces(cache_cls: caches.Cache, trace_info: TraceInfo):
 
 def assert_expected_responses(cache_snapshot: caches.Cache, trace_info: TraceInfo):
     for expected_response in trace_info.expected_responses:
-        if expected_response["event"] == "exists":
-            assert_exists(cache_snapshot, expected_response["key"], expected_response["value"])
-        elif expected_response["event"] == "get_size":
-            assert_size(cache_snapshot, expected_response["key"], expected_response["value"])
+        event, key, value = expected_response["event"], expected_response["key"], expected_response["value"]
+        assertion_fn = None
+        if event == "exists":
+            assertion_fn = _assert_exists
+        elif event == "get_size":
+            assertion_fn = _assert_size
+        else:
+            raise Exception
+        assertion_fn(cache_snapshot, key, value)
