@@ -11,5 +11,3 @@ To execute:
 ```
 python run.py trace_filepath cache_size
 ```
-
-Change constants in constants.py for experimenting different values.
