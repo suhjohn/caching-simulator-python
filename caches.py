@@ -14,6 +14,7 @@ class CacheState(IntEnum):
 class BaseCache(ABC):
     def __init__(self, capacity):
         self.capacity = capacity
+        self.curr_capacity = 0
         self._is_post_hydrate = False
 
     @abstractmethod
@@ -45,7 +46,6 @@ class LRUCache(BaseCache):
         :param capacity:
         """
         super().__init__(capacity)
-        self.curr_capacity = 0
         self.map = OrderedDict()
 
     def __str__(self):
