@@ -16,6 +16,10 @@ class SimulatedCachingStack:
     def __repr__(self):
         return f"SimulatedCachingStack(filter={self.filter_instance}, cache={self.cache_instance})"
 
+    @property
+    def identifier(self):
+        return f"{self.filter_instance}_{self.cache_instance}"
+
     def put(self, key: int, size: int):
         if self.filter_instance.should_filter(key, size):
             return False

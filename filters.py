@@ -9,11 +9,17 @@ class IFilter(ABC):
 
 
 class NullFilter(IFilter):
+    def __repr__(self):
+        return "Null"
+
     def should_filter(self, key, size):
         return False
 
 
 class BypassFilter(IFilter):
+    def __repr__(self):
+        return f"Bypass({self.threshold_size})"
+
     def __init__(self, threshold_size):
         self.threshold_size = threshold_size
 
@@ -26,6 +32,9 @@ class BloomFilter(IFilter):
     Bloom Filter implementation.
     Assumes that the key is integer.
     """
+
+    def __repr__(self):
+        return f"Bloom(m={self._m})"
 
     def __init__(self, m, k):
         """

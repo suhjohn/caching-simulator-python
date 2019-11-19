@@ -20,15 +20,15 @@ class CacheTraceIterator:
     parser_fn is for various trace formats.
     """
 
-    def __init__(self, filename, parser_fn):
+    def __init__(self, file_path, parser_fn):
         self.file = None
-        self.filename = filename
+        self.file_path = file_path
         self.parser_fn = parser_fn
         self.total_count = 0
         self.total_size = 0
 
     def __iter__(self):
-        self.file = open(self.filename, 'r')
+        self.file = open(self.file_path, 'r')
         return self
 
     def __next__(self) -> Trace:
@@ -46,3 +46,8 @@ class CacheTraceIterator:
     def __del__(self):
         if self.file and not self.file.closed:
             self.file.close()
+
+    @property
+    def trace_filename(self):
+        trace_filename = self.file_path.split("/")[-1]
+        return trace_filename.split(".")[0]

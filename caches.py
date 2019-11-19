@@ -48,7 +48,7 @@ class LRUCache(BaseCache):
         super().__init__(capacity)
         self.map = OrderedDict()
 
-    def __str__(self):
+    def __repr__(self):
         return "LRU"
 
     def put(self, key, size):
