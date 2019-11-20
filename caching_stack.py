@@ -20,13 +20,18 @@ class SimulatedCachingStack:
     def identifier(self):
         return f"{self.filter_instance}_{self.cache_instance}"
 
-    def put(self, key: int, size: int):
-        if self.filter_instance.should_filter(key, size):
+    def put(self, request):
+        if self.filter_instance.should_filter(request):
             return False
-        self.cache_instance.put(key, size)
+        self.cache_instance.put(request)
         return True
 
-    def get(self, key: int):
-        if self.filter_instance.should_filter(key, 0):
+    def get(self, request):
+        """
+
+        :param request: traces.CacheRequest
+        :return:
+        """
+        if self.filter_instance.should_filter(request):
             return None
-        return self.cache_instance.get(key)
+        return self.cache_instance.get(request)

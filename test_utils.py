@@ -2,6 +2,7 @@ import json
 import os
 
 import caches
+from traces import CacheRequest
 
 __all__ = [
     "cache_info_map",
@@ -70,12 +71,16 @@ cache_info_map = {
     "lru": {
         "cache_cls": caches.LRUCache,
         "trace_infos": common_trace_infos + collect_trace_infos(f"{correctness_base_fp}/lru")
+    },
+    "s4lru": {
+        "cache_cls": caches.S4LRUCache,
+        "trace_infos": common_trace_infos + collect_trace_infos(f"{correctness_base_fp}/s4lru")
     }
 }
 
 
 def _assert_exists(cache_obj: caches.Cache, key, should_exist: bool):
-    size = cache_obj.get(key)
+    size = cache_obj.get(CacheRequest(key, 0))
     if should_exist:
         assert size is not None
     else:
@@ -83,19 +88,19 @@ def _assert_exists(cache_obj: caches.Cache, key, should_exist: bool):
 
 
 def _assert_size(cache_obj: caches.Cache, key, expected_size: int):
-    size = cache_obj.get(key)
+    size = cache_obj.get(CacheRequest(key, 0))
     assert size == expected_size
 
 
 def execute_traces(cache_cls: caches.Cache, trace_info: TraceInfo):
-    cache_obj: caches.Cache = cache_cls(trace_info.cache_size)
+    cache_obj = cache_cls(trace_info.cache_size)
     for trace in trace_info.traces:
-        key = trace["key"]
-        size = cache_obj.get(key)
+        req = CacheRequest(trace["key"], trace["size"])
+        size = cache_obj.get(req)
         if size is None:
             # miss
             pass
-        cache_obj.put(key, trace["size"])
+        cache_obj.put(req)
     return cache_obj
 
 

@@ -1,0 +1,43 @@
+{
+  "size": 4,
+  "traces": [
+    {
+      "key": 1,
+      "size": 1
+    },
+    {
+      "key": 2,
+      "size": 1
+    },
+    {
+      "key": 3,
+      "size": 1
+    },
+    {
+      "key": 4,
+      "size": 1
+    }
+  ],
+  "expectedResponses": [
+    {
+      "key": 1,
+      "event": "exists",
+      "value": true
+    },
+    {
+      "key": 2,
+      "event": "exists",
+      "value": true
+    },
+    {
+      "key": 3,
+      "event": "exists",
+      "value": true
+    },
+    {
+      "key": 4,
+      "event": "exists",
+      "value": true
+    }
+  ]
+}

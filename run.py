@@ -5,7 +5,7 @@ import sys
 import io
 import os
 
-from caches import LRUCache, CacheState
+from caches import LRUCache, CacheState, initialize_cache
 from caching_stack import SimulatedCachingStack
 from filters import NullFilter
 from logger import log_window
@@ -33,19 +33,20 @@ class Simulation:
 
         window_size = 1000000
         start_time = datetime.now()
-        for cache_trace in self._trace_iterator:
-            size = self._caching_stack.get(cache_trace.key)
+        for request in self._trace_iterator:
+            size = self._caching_stack.get(request)
             if size is None:
                 no_warmup_miss_count += 1
-                no_warmup_miss_byte += cache_trace.size
+                no_warmup_miss_byte += request.size
                 if self._caching_stack.cache_instance.state == CacheState.POST_WARMUP:
                     miss_count += 1
-                    miss_byte += cache_trace.size
-                self._caching_stack.put(cache_trace.key, cache_trace.size)
+                    miss_byte += request.size
+                self._caching_stack.put(request)
 
             # log every window number of traces
-            if current_trace_index % window_size == 0:
-                log_window(current_trace_index, self._trace_iterator, miss_count, miss_byte)
+            if current_trace_index != 0 and current_trace_index % window_size == 0:
+                log_window(current_trace_index, self._trace_iterator,
+                           no_warmup_miss_count, no_warmup_miss_byte)
             current_trace_index += 1
         end_time = datetime.now()
 
@@ -61,12 +62,13 @@ class Simulation:
         return res
 
 
-def run(file_path, cache_size, run_profiler, write_profiler_result, write_simulation_result):
+def run(cache_type, cache_size, file_path, run_profiler, write_profiler_result, write_simulation_result):
     filter_instance = NullFilter()
-    cache_instance = LRUCache(cache_size)
+    cache_instance = initialize_cache(cache_type, capacity=cache_size)
     caching_stack = SimulatedCachingStack(filter_instance, cache_instance)
     trace_iterator = CacheTraceIterator(file_path, parse_tr_line)
     simulation = Simulation(caching_stack, trace_iterator)
+    print(caching_stack.identifier)
 
     if run_profiler:
         pr = cProfile.Profile()
@@ -96,16 +98,21 @@ def run(file_path, cache_size, run_profiler, write_profiler_result, write_simula
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('traceFile')
+    parser.add_argument('cacheType')
     parser.add_argument('cacheSize', type=int)
+    parser.add_argument('traceFile')
+    parser.add_argument('--filterType', dest='filterType')
+    parser.add_argument('--filterArgs', dest='filterArgs')
     parser.add_argument('--runProfiler', default=False, dest='runProfiler', action='store_true')
     parser.add_argument('--writeProfilerResult', default=False, dest='writeProfilerResult', action='store_true')
     parser.add_argument('--writeSimResult', default=False, dest='writeSimResult', action='store_true')
     args = parser.parse_args()
 
-    run(args.traceFile,
+    run(
+        args.cacheType,
         args.cacheSize,
+        args.traceFile,
         args.runProfiler,
         args.writeProfilerResult,
         args.writeSimResult
-        )
+    )

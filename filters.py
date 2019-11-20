@@ -4,7 +4,7 @@ from typing import NewType
 
 class IFilter(ABC):
     @abstractmethod
-    def should_filter(self, key, size):
+    def should_filter(self, request):
         pass
 
 
@@ -12,7 +12,7 @@ class NullFilter(IFilter):
     def __repr__(self):
         return "Null"
 
-    def should_filter(self, key, size):
+    def should_filter(self, request):
         return False
 
 
@@ -23,8 +23,8 @@ class BypassFilter(IFilter):
     def __init__(self, threshold_size):
         self.threshold_size = threshold_size
 
-    def should_filter(self, key, size):
-        return size > self.threshold_size
+    def should_filter(self, request):
+        return request.size > self.threshold_size
 
 
 class BloomFilter(IFilter):
@@ -44,10 +44,10 @@ class BloomFilter(IFilter):
         self._filters = [set() for _ in range(2)]
         self._m = m
 
-    def should_filter(self, key, size) -> bool:
-        if self.exists(key):
+    def should_filter(self, request) -> bool:
+        if self.exists(request.key):
             return False
-        self.put(key)
+        self.put(request.key)
         return True
 
     def put(self, key):
