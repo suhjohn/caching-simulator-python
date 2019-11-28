@@ -252,4 +252,5 @@ dmypy.json
 .idea/*
 
 results/*
+cache_traces/*
 profiler_results/*

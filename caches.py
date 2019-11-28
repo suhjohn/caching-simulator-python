@@ -139,7 +139,6 @@ class S4LRUCache(BaseCache):
 
     @property
     def is_post_hydrate(self):
-        # is_post_hydrate = all([c.is_post_hydrate for c in self.segments])
         return all([c.is_post_hydrate for c in self.segments])
 
     def _set_capacity(self, capacity):
@@ -173,6 +172,20 @@ class S4LRUCache(BaseCache):
 
         while self.segments[i].curr_capacity > self.segments[i].capacity:
             self._segment_put(i - 1, self.segments[i].evict_return())
+
+
+class LRUKSampleCache(BaseCache):
+    def __init__(self, capacity, sample_rate, n_past_intervals, forget_on_evict):
+        super().__init__(capacity)
+        self.sample_rate = sample_rate
+        self.n_past_intervals = n_past_intervals
+        self.forget_on_evict = forget_on_evict
+
+    def get(self, request):
+        return None
+
+    def put(self, request):
+        pass
 
 
 _name_to_cls = {

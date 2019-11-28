@@ -10,7 +10,7 @@ from caching_stack import SimulatedCachingStack
 from filters import NullFilter
 from logger import log_window
 import settings
-from traces import parse_tr_line, CacheTraceIterator
+from traces import StringCacheTraceIterator, initialize_iterator, DEFAULT_TRACE_TYPE
 from datetime import datetime
 import argparse, cProfile
 
@@ -58,35 +58,19 @@ class Simulation:
             "simulation_timestamp": datetime.now().strftime("%Y-%m-%dT%H:%M:%S"),
             "no_warmup_byte_miss_ratio": no_warmup_miss_byte / self._trace_iterator.total_size
         }
-        print(res)
         return res
 
 
-def run(cache_type, cache_size, file_path, run_profiler, write_profiler_result, write_simulation_result):
+def run(cache_type, cache_size, file_path, trace_type, write_simulation_result):
     filter_instance = NullFilter()
     cache_instance = initialize_cache(cache_type, capacity=cache_size)
     caching_stack = SimulatedCachingStack(filter_instance, cache_instance)
-    trace_iterator = CacheTraceIterator(file_path, parse_tr_line)
+    trace_iterator = initialize_iterator(trace_type, file_path)
     simulation = Simulation(caching_stack, trace_iterator)
-    print(caching_stack.identifier)
 
-    if run_profiler:
-        pr = cProfile.Profile()
-        pr.enable()
-        res = simulation.run()
-        pr.disable()
-        s = io.StringIO()
-        ps = pstats.Stats(pr, stream=s).sort_stats('cumulative')
-        ps.print_stats()
-        print(s.getvalue())
-        if write_profiler_result:
-            if not os.path.exists(settings.PROFILING_RESULT_DIRECTORY):
-                os.makedirs(settings.PROFILING_RESULT_DIRECTORY)
-            with open(f"{settings.PROFILING_RESULT_DIRECTORY}/"
-                      f"{simulation.identifier}_{res['simulation_timestamp']}", "w") as f:
-                f.write(s.getvalue())
-    else:
-        res = simulation.run()
+    print(caching_stack.identifier)
+    res = simulation.run()
+    print(res)
 
     if write_simulation_result:
         if not os.path.exists(settings.SIMULATION_RESULT_DIRECTORY):
@@ -101,10 +85,9 @@ if __name__ == "__main__":
     parser.add_argument('cacheType')
     parser.add_argument('cacheSize', type=int)
     parser.add_argument('traceFile')
+    parser.add_argument('--traceType', default=DEFAULT_TRACE_TYPE, dest='traceType')
     parser.add_argument('--filterType', dest='filterType')
     parser.add_argument('--filterArgs', dest='filterArgs')
-    parser.add_argument('--runProfiler', default=False, dest='runProfiler', action='store_true')
-    parser.add_argument('--writeProfilerResult', default=False, dest='writeProfilerResult', action='store_true')
     parser.add_argument('--writeSimResult', default=False, dest='writeSimResult', action='store_true')
     args = parser.parse_args()
 
@@ -112,7 +95,6 @@ if __name__ == "__main__":
         args.cacheType,
         args.cacheSize,
         args.traceFile,
-        args.runProfiler,
-        args.writeProfilerResult,
+        args.traceType,
         args.writeSimResult
     )
