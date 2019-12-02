@@ -1,5 +1,5 @@
 import pickle
-from pickle import dumps, load
+from pickle import dumps
 
 from traces import parse_tr_line
 
@@ -8,7 +8,7 @@ s_dump and s_dump_elt from https://github.com/pgbovine/streaming-pickle
 """
 
 
-def s_dump(iterable_to_pickle, file_obj, buff_size=4098):
+def s_dump(iterable_to_pickle, file_obj, buff_size=100000):
     li = []
     for elt in iterable_to_pickle:
         li.append(elt)

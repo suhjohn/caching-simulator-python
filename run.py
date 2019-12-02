@@ -1,8 +1,4 @@
 import json
-import pstats
-import sys
-
-import io
 import os
 
 from caches import LRUCache, CacheState, initialize_cache
@@ -12,7 +8,7 @@ from logger import log_window
 import settings
 from traces import StringCacheTraceIterator, initialize_iterator, DEFAULT_TRACE_TYPE
 from datetime import datetime
-import argparse, cProfile
+import argparse
 
 
 class Simulation:

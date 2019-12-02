@@ -1,10 +1,9 @@
 from abc import abstractmethod, ABC
 from collections import namedtuple
-from multiprocessing import pool
-from typing import List, NewType
 from six.moves import cPickle as pickle
+from multiprocessing import Pool
 
-from trace_to_binary import BinTraceReader
+from trace_to_binary import BinTraceReader, BinArrTraceReader
 
 DEFAULT_TRACE_TYPE = "string"
 CacheRequest = namedtuple("CacheRequest", ['key', 'size'])
@@ -59,6 +58,28 @@ class StringCacheTraceIterator(CacheTraceIterator):
         file.close()
 
 
+class BatchStringCacheTraceIterator(CacheTraceIterator):
+    def __init__(self, file_path):
+        super().__init__(file_path)
+        self.parser_fn = parse_tr_line
+
+    def __iter__(self):
+        """
+
+        :return: generator(CacheRequest)
+        """
+        file = open(self.file_path, 'r')
+        next_lines = file.readlines(100000)
+        while next_lines:
+            for next_line in next_lines:
+                trace = self.parser_fn(next_line)
+                self.total_count += 1
+                self.total_size += trace.size
+                yield trace
+            next_lines = file.readlines(100000)
+        file.close()
+
+
 class PickleCacheTraceIterator(CacheTraceIterator):
 
     def __init__(self, file_path):
@@ -66,13 +87,14 @@ class PickleCacheTraceIterator(CacheTraceIterator):
 
     def __iter__(self):
         file = open(self.file_path, 'rb')
-        trace = pickle.load(file)
-        while trace:
-            self.total_count += 1
-            self.total_size += trace.size
-            yield trace
+        traces = pickle.load(file)
+        while True:
+            for trace in traces:
+                self.total_count += 1
+                self.total_size += trace.size
+                yield trace
             try:
-                trace = pickle.load(file)
+                traces = pickle.load(file)
             except EOFError:
                 break
         file.close()
@@ -85,8 +107,28 @@ class BinCacheTraceIterator(CacheTraceIterator):
         self.reader = None
 
     def __iter__(self):
-        self.file = open(self.file_path, 'rb')
+        self.file = open(self.file_path, 'rb+')
         self.reader = BinTraceReader(self.file)
+        for line in self.reader:
+            trace = CacheRequest(line[2], line[1])
+            self.total_count += 1
+            self.total_size += trace.size
+            yield trace
+
+    def __del__(self):
+        if self.file:
+            self.file.close()
+
+
+class BinArrCacheTraceIterator(CacheTraceIterator):
+    def __init__(self, file_path):
+        super().__init__(file_path)
+        self.file = None
+        self.reader = None
+
+    def __iter__(self):
+        self.file = open(self.file_path, 'rb+')
+        self.reader = BinArrTraceReader(self.file)
         for line in self.reader:
             trace = CacheRequest(line[2], line[1])
             self.total_count += 1
@@ -100,8 +142,10 @@ class BinCacheTraceIterator(CacheTraceIterator):
 
 _name_to_cls = {
     "string": StringCacheTraceIterator,
+    "batch_string": BatchStringCacheTraceIterator,
     "pickle": PickleCacheTraceIterator,
-    "binary": BinCacheTraceIterator
+    "binary": BinCacheTraceIterator,
+    "bin_arr": BinArrCacheTraceIterator
 }
 
 

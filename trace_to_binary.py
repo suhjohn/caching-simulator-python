@@ -1,5 +1,9 @@
 import struct
 
+import mmap
+
+import array
+
 """
 Binary Format
 |           |            | 
@@ -63,7 +67,7 @@ class BinTraceWriter:
 class BinTraceReader:
 
     def __init__(self, bin_file):
-        self.bin_file = bin_file
+        self.bin_file = mmap.mmap(bin_file.fileno(), 0)
         _header_data = self.bin_file.read(HEADER_FMT_LEN)
         header = _header_unpack(_header_data)
         self.bin_fmt = BIN_FMT_BASE.format(
@@ -73,10 +77,51 @@ class BinTraceReader:
         self.unpack_fn = struct.Struct(self.bin_fmt).unpack_from
 
     def __iter__(self):
-        data = self.bin_file.read(self.bin_fmt_len)
-        while data:
-            yield self.unpack_fn(data)
-            data = self.bin_file.read(self.bin_fmt_len)
+        chunk_size = 100000
+        chunks = self.bin_file.read(self.bin_fmt_len * chunk_size)
+        while chunks:
+            for i in range(chunk_size):
+                start = i * self.bin_fmt_len
+                try:
+                    yield self.unpack_fn(chunks[start:start + self.bin_fmt_len])
+                except:
+                    return
+
+            chunks = self.bin_file.read(self.bin_fmt_len * chunk_size)
+
+
+class BinArrTraceWriter:
+    def _parse_tr_line(self, tr_data_line):
+        split_line = tr_data_line.split(" ")
+        timestamp = int(split_line[0])
+        size = int(split_line[2])
+        key = hash(split_line[1])
+        return array.array('l', [timestamp, size, key])
+
+    def dump(self, source, dest):
+        for line in source:
+            tr_array = self._parse_tr_line(line)
+            tr_array.tofile(dest)
+
+
+class BinArrTraceReader:
+    def __init__(self, bin_file):
+        self.bin_file = bin_file
+
+    def __iter__(self):
+        chunk_size = 100000
+        while True:
+            a = array.array('l')
+            try:
+                a.fromfile(self.bin_file, 3 * chunk_size)
+            except EOFError:
+                break
+            for i in range(chunk_size):
+                yield a[i * 3], a[1 + i * 3 ], a[2 + i * 3]
+        if a:
+            for i in range(len(a) // 3):
+                yield a[i * 3], a[1 + i * 3], a[2 + i * 3]
+
 
 
 if __name__ == "__main__":
@@ -84,21 +129,24 @@ if __name__ == "__main__":
 
     source_filename = sys.argv[1]
     dest_filename = sys.argv[2]
-    key_size = 1
-    key_type = int
-
-    # Writing
+    trace_type = sys.argv[3]
     source = open(source_filename, 'r')
     dest = open(dest_filename, 'wb+')
-    writer = BinTraceWriter(key_size, key_type)
-    writer.dump(source, dest)
+
+    if trace_type == "bin":
+        key_size = 1
+        key_type = int
+
+        # Writing
+        writer = BinTraceWriter(key_size, key_type)
+        writer.dump(source, dest)
+    elif trace_type == "bin_arr":
+        writer = BinArrTraceWriter()
+        writer.dump(source, dest)
+    else:
+        source.close()
+        dest.close()
+        raise KeyError("invalid trace_type")
 
     source.close()
     dest.close()
-
-    # Reading
-    # bin_file = open(dest_filename, 'rb')
-    # reader = BinTraceReader(bin_file)
-    # for line in reader:
-    #     print(line)
-    # bin_file.close()
