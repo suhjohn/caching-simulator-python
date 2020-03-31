@@ -1,54 +1,68 @@
 import json
+import logging
 import os
-
-from caches import LRUCache, CacheState, initialize_cache
-from caching_stack import SimulatedCachingStack
-from filters import NullFilter
-from logger import log_window
-import settings
-from traces import StringCacheTraceIterator, initialize_iterator, DEFAULT_TRACE_TYPE
-from datetime import datetime
 import argparse
+from datetime import datetime
+import settings
+
+from caching_stack import CachingSystemSimulator
+from caches import initialize_cache
+from filters import NullFilter, initialize_filter
+
+from logger import log_window, setup_logger
+from traces import initialize_iterator, DEFAULT_TRACE_TYPE
+
+TEMPORAL_FORMATS = {
+    "s", "milli", "micro"
+}
 
 
 class Simulation:
-    def __init__(self, caching_stack, trace_iterator):
+    def __init__(self, caching_stack, trace_iterator,
+                 ordinal_window=100000, temporal_window=600, temporal_format='s'):
         self._trace_iterator = trace_iterator
-        self._caching_stack = caching_stack
+        self._simulator = caching_stack
+        self._temporal_window = temporal_window
+        self._ordinal_window = ordinal_window
+        self._temporal_format = temporal_format
+        self.execution_logger: logging.Logger = None
+        assert self._temporal_format in TEMPORAL_FORMATS
 
     @property
-    def identifier(self):
-        return f"{self._caching_stack.identifier}_{self._trace_iterator.trace_filename}"
+    def id(self):
+        return f"{self._simulator.id}_{self._trace_iterator.trace_filename}"
+
+    def set_execution_logger(self, logger):
+        self.execution_logger = logger
 
     def run(self):
         no_warmup_miss_count = 0
         no_warmup_miss_byte = 0
-        miss_count = 0
-        miss_byte = 0
         current_trace_index = 0
-
-        window_size = 1000000
         start_time = datetime.now()
+
         for request in self._trace_iterator:
-            size = self._caching_stack.get(request)
-            if size is None:
+            cache_obj = self._simulator.get(request)
+            if cache_obj is None:
                 no_warmup_miss_count += 1
                 no_warmup_miss_byte += request.size
-                if self._caching_stack.cache_instance.state == CacheState.POST_WARMUP:
-                    miss_count += 1
-                    miss_byte += request.size
-                self._caching_stack.put(request)
+                self._simulator.put(request)
 
-            # log every window number of traces
-            if current_trace_index != 0 and current_trace_index % window_size == 0:
-                log_window(current_trace_index, self._trace_iterator,
-                           no_warmup_miss_count, no_warmup_miss_byte)
+            # # logs every window number of traces
+            if current_trace_index != 0 and current_trace_index % self._ordinal_window == 0:
+                log_window(self.execution_logger, current_trace_index,
+                           self._trace_iterator, no_warmup_miss_byte)
+
             current_trace_index += 1
         end_time = datetime.now()
 
         res = {
-            "cache_type": str(self._caching_stack.cache_instance),
-            "cache_size": str(self._caching_stack.cache_instance.capacity),
+            "cache_type": str(self._simulator.cache_instance),
+            "cache_args": dict(self._simulator.cache_instance.args._asdict()),
+            "cache_id": self._simulator.cache_instance.id,
+            "cache_size": self._simulator.cache_instance.capacity,
+            "filter_type": str(self._simulator.filter_instance),
+            "filter_args": dict(self._simulator.filter_instance.args._asdict()),
             "trace_file": self._trace_iterator.trace_filename,
             "simulation_time": (end_time - start_time).total_seconds(),
             "simulation_timestamp": datetime.now().strftime("%Y-%m-%dT%H:%M:%S"),
@@ -57,23 +71,27 @@ class Simulation:
         return res
 
 
-def run(cache_type, cache_size, file_path, trace_type, write_simulation_result):
-    filter_instance = NullFilter()
-    cache_instance = initialize_cache(cache_type, capacity=cache_size)
-    caching_stack = SimulatedCachingStack(filter_instance, cache_instance)
+def run(cache_type, cache_size, file_path, trace_type, filter_type, result_identifier):
+    file_path = "./cache_traces/" + file_path
+    filter_instance = initialize_filter(filter_type)
+    cache_instance = initialize_cache(cache_type, cache_size)
+    caching_stack = CachingSystemSimulator(filter_instance, cache_instance)
     trace_iterator = initialize_iterator(trace_type, file_path)
     simulation = Simulation(caching_stack, trace_iterator)
-
-    print(caching_stack.identifier)
+    eviction_logger = setup_logger(
+        "eviction_logger",
+        f"{settings.EVICTION_LOGGING_RESULT_DIRECTORY}/{simulation.id}.log"
+    )
+    execution_logger = setup_logger(
+        "execution_logger",
+        f"{settings.EXECUTION_LOGGING_RESULT_DIRECTORY}/{simulation.id}.log"
+    )
+    cache_instance.set_eviction_logger(eviction_logger)
+    simulation.set_execution_logger(execution_logger)
     res = simulation.run()
-    print(res)
-
-    if write_simulation_result:
-        if not os.path.exists(settings.SIMULATION_RESULT_DIRECTORY):
-            os.makedirs(settings.SIMULATION_RESULT_DIRECTORY)
-        with open(f"{settings.SIMULATION_RESULT_DIRECTORY}/"
-                  f"{simulation.identifier}_{res['simulation_timestamp']}", "w") as f:
-            json.dump(res, f, sort_keys=True, indent=4)
+    with open(f"{settings.SIMULATION_RESULT_DIRECTORY}/"
+              f"{simulation.id}_{result_identifier}.json", "w") as f:
+        json.dump(res, f, sort_keys=True, indent=4)
 
 
 if __name__ == "__main__":
@@ -81,16 +99,25 @@ if __name__ == "__main__":
     parser.add_argument('cacheType')
     parser.add_argument('cacheSize', type=int)
     parser.add_argument('traceFile')
+    parser.add_argument('--temporalWindowSize', default=600, type=int)
+    parser.add_argument('--ordinalWindowSize', default=100000, type=int)
     parser.add_argument('--traceType', default=DEFAULT_TRACE_TYPE, dest='traceType')
-    parser.add_argument('--filterType', dest='filterType')
+    parser.add_argument('--cacheArgs', dest='filterArgs')
+    parser.add_argument('--filterType', default="Null", dest='filterType')
     parser.add_argument('--filterArgs', dest='filterArgs')
-    parser.add_argument('--writeSimResult', default=False, dest='writeSimResult', action='store_true')
+    parser.add_argument('--resultIdentifier', default="regular", dest='resultIdentifier')
     args = parser.parse_args()
-
+    if not os.path.exists(settings.EVICTION_LOGGING_RESULT_DIRECTORY):
+        os.makedirs(settings.EVICTION_LOGGING_RESULT_DIRECTORY)
+    if not os.path.exists(settings.EXECUTION_LOGGING_RESULT_DIRECTORY):
+        os.makedirs(settings.EXECUTION_LOGGING_RESULT_DIRECTORY)
+    if not os.path.exists(settings.SIMULATION_RESULT_DIRECTORY):
+        os.makedirs(settings.SIMULATION_RESULT_DIRECTORY)
     run(
         args.cacheType,
         args.cacheSize,
         args.traceFile,
         args.traceType,
-        args.writeSimResult
+        args.filterType,
+        args.resultIdentifier,
     )

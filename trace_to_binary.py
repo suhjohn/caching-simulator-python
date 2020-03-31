@@ -109,7 +109,7 @@ class BinArrTraceReader:
         self.bin_file = bin_file
 
     def __iter__(self):
-        chunk_size = 100000
+        chunk_size = 10000
         while True:
             a = array.array('l')
             try:

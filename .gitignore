@@ -1,4 +1,5 @@
 *.tr
+logs/
 ### VisualStudioCode ###
 .vscode/*
 !.vscode/settings.json

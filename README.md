@@ -17,7 +17,7 @@ python run.py [-h] [--runProfiler] [--writeProfilerResult] [--writeSimResult]
 
 
 ### Simulation Results
-Change the directory path in settings.py to log the results to a different
+Change the directory path in settings.py to logs the results to a different
 directory.
 
 Filenames for the simulation result is generated as the following:

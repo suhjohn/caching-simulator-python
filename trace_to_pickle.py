@@ -27,7 +27,7 @@ def s_dump_elt(elt_to_pickle, file_obj):
 def do_pickle(source, destination):
     write_to = open(destination, 'wb+')
     with open(source) as trace_file:
-        trace_file_as_generator = (parse_tr_line(line) for line in trace_file)
+        trace_file_as_generator = (parse_tr_line(line, i) for i, line in enumerate(trace_file))
         s_dump(trace_file_as_generator, write_to)
     write_to.close()
 

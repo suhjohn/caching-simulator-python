@@ -1,9 +1,9 @@
+import hashlib
 from abc import ABC, abstractmethod
 from enum import IntEnum
-from typing import NewType
-from collections import OrderedDict
-
-from logger import log_error_too_large
+from logging import Logger
+from typing import NewType, Optional, NamedTuple
+from collections import OrderedDict, namedtuple
 from traces import CacheRequest
 
 
@@ -12,18 +12,76 @@ class CacheState(IntEnum):
     POST_WARMUP = 1
 
 
+class CacheObject:
+    def __init__(self, key, size, ts, index):
+        self.key = key
+        self.size = size
+        self.ts = ts
+        self.index = index
+        self.frequency = 1
+
+    def as_log(self, request):
+        return f"{self.key} {self.size} {self.frequency} {self.ts} " \
+               f"{request.ts - self.ts} {self.index} {request.index - self.index}"
+
+    def touch(self):
+        self.frequency += 1
+
+
 class BaseCache(ABC):
-    def __init__(self, capacity):
+    def __init__(self, capacity, args):
         self.capacity = capacity
+        self.args: NamedTuple = args
         self.curr_capacity = 0
+        self.eviction_logger: Logger = None
+
+    def __repr__(self):
+        return f"{self.__class__.__name__}({self.capacity},{self.args})"
+
+    def __str__(self):
+        return f"{self.__class__.__name__}_{self.capacity}"
 
     @property
+    def id(self):
+        h = hashlib.blake2s(digest_size=16)
+        args = self.args._asdict()
+        keys = sorted(args.keys())
+        args_list = []
+        for key in keys:
+            args_list.append(key)
+            args_list.append(args[key])
+        h.update(f"{self.__class__.__name__}({self.capacity},{tuple(args_list)})".encode())
+        return h.hexdigest()
+
+    def set_eviction_logger(self, logger):
+        self.eviction_logger = logger
+
+    def evict(self, request: CacheRequest) -> Optional[CacheObject]:
+        obj = self._evict()
+        self.eviction_logger.info(obj.as_log(request))
+        return obj
+
+    def admit(self, request: CacheRequest) -> None:
+        self._admit(request)
+
+    def get(self, request: CacheRequest) -> Optional[CacheObject]:
+        obj = self._get(request)
+        if obj:
+            obj.touch()
+            return obj
+        else:
+            return None
+
     @abstractmethod
-    def is_post_hydrate(self):
+    def _evict(self) -> CacheObject:
+        """
+
+        :return:
+        """
         pass
 
     @abstractmethod
-    def put(self, request):
+    def _admit(self, request: CacheRequest) -> None:
         """
 
         :param request: traces.CacheRequest
@@ -32,174 +90,123 @@ class BaseCache(ABC):
         pass
 
     @abstractmethod
-    def get(self, request):
+    def _get(self, request: CacheRequest) -> CacheObject:
         """
         Returns the size of the key if the object exists in cache.
         Otherwise, returns None.
-
         :param request: traces.CacheRequest
         :return:
         """
         pass
 
-    @property
-    def state(self):
-        if self.is_post_hydrate:
-            return CacheState.POST_WARMUP
-        return CacheState.PRE_WARMUP
+
+LRUArgs = namedtuple("LRUArgs", [])
 
 
 class LRUCache(BaseCache):
-    def __init__(self, capacity):
-        """
-        [] capacity 5
-        {} forward
-        {} backward
+    def __init__(self, capacity, args):
+        super().__init__(capacity, args)
+        self.map: OrderedDict[str, CacheObject] = OrderedDict()
 
-        1 <-> 2 <-> 3 <-> 4 <->
-        {
+    def _evict(self):
+        lru_key, lru_obj = self.map.popitem(last=False)
+        self.curr_capacity -= lru_obj.size
+        return lru_obj
 
-        }
-        :param capacity:
-        """
-        super().__init__(capacity)
-        self._is_post_hydrate = False
-        self.map = OrderedDict()
-
-    def __repr__(self):
-        return "LRU"
-
-    def peek_head(self):
-        return next(self.map.__iter__())
-
-    @property
-    def is_post_hydrate(self):
-        return self._is_post_hydrate
-
-    def evict(self, key):
-        if key in self.map:
-            self.curr_capacity -= self.map[key]
-            del self.map[key]
-
-    def evict_return(self):
-        lru_key = next(reversed(self.map))
-        lru_size = self.map[lru_key]
-        req = CacheRequest(lru_key, lru_size)
-        self.evict(lru_key)
-        return req
-
-    def put(self, request):
-        # object feasible to store?
-        if request.size > self.capacity:
-            log_error_too_large(self.capacity, request.key, request.size)
-            return False
-
-        while self.curr_capacity + request.size > self.capacity:
-            # Set flag to denote that cache has completed filling up
-            self._is_post_hydrate = True
-            _, popped_size = self.map.popitem(last=False)
-            self.curr_capacity -= popped_size
-
-        if request.key in self.map:
-            self.map.move_to_end(request.key)
-            self.curr_capacity -= self.map[request.key]
-        self.map[request.key] = request.size
-        self.curr_capacity += self.map[request.key]
-        return True
-
-    def get(self, request):
+    def _get(self, request: CacheRequest):
         if request.key not in self.map:
             return None
         self.map.move_to_end(request.key)
         return self.map[request.key]
 
+    def _admit(self, request: CacheRequest):
+        # object feasible to store?
+        if request.size > self.capacity:
+            return False
 
-class S4LRUCache(BaseCache):
-    """
-    Four queues are maintained at levels 0 to 3.
-    On a cache miss, the item is inserted at the head of queue 0.
-    On a cache hit, the item is moved to the head of the next higher queue
-        (items in queue 3 move to the head of queue 3).
-    Each queue is allocated 1/4 of the total cache size and items are
-    evicted from the tail of a queue to the head of the next lower queue to
-    maintain the size invariants.
-    Items evicted from queue 0 are evicted from the cache.
-    """
+        while self.curr_capacity + request.size > self.capacity:
+            self.evict(request)
 
-    def __init__(self, capacity):
-        super().__init__(capacity)
-        self.segments = [LRUCache(0) for _ in range(4)]
-        self._set_capacity(capacity)
+        if request.key in self.map:
+            self.map.move_to_end(request.key)
+        else:
+            self.curr_capacity += request.size
+            self.map[request.key] = CacheObject(request.key, request.size, request.ts, request.index)
+        return True
+
+    def pop(self, key):
+        try:
+            cache_obj = self.map.pop(key)
+            self.curr_capacity -= cache_obj.size
+            return cache_obj
+        except Exception as e:
+            print(e)
+            return None
+
+
+SLRUArgs = namedtuple("S4LRUArgs", ["n", "ratios"])
+
+
+class SLRUCache(BaseCache):
+    default_args = SLRUArgs(4, [0.25, 0.25, 0.25, 0.25])
+
+    def __init__(self, capacity, args=default_args):
+        assert args.n == len(args.ratios)
+        assert sum(args.ratios) == 1
+        super().__init__(capacity, args)
+        self.segments = [LRUCache(0, LRUArgs()) for _ in range(args.n)]
+        self._set_capacity(capacity, args.ratios)
 
     def __repr__(self):
         return "S4LRU"
 
-    def segment_peek_head(self, i):
-        return self.segments[i].peek_head()
+    def _set_capacity(self, capacity, ratios):
+        for i, ratio in enumerate(ratios):
+            self.segments[i].capacity = int(capacity * ratio)
 
-    @property
-    def is_post_hydrate(self):
-        return all([c.is_post_hydrate for c in self.segments])
-
-    def _set_capacity(self, capacity):
-        total = capacity
-        quarter_capacity = capacity // 4
-        for i in range(3, -1, -1):
-            if i:
-                self.segments[i].capacity = quarter_capacity
-                total -= quarter_capacity
-            else:
-                self.segments[i].capacity = total
-            print(f"segment {i} size: {self.segments[i].capacity}")
-
-    def get(self, request):
-        for i in range(4):
-            size = self.segments[i].get(request)
-            if size is not None:
-                if i < 3:
-                    self.segments[i].evict(request.key)
-                    self._segment_put(i + 1, request)
-                return size
+    def _get(self, request):
+        for i, segment in enumerate(self.segments):
+            obj = segment.get(request)
+            if obj is not None and i != len(self.segments) - 1:
+                self.segments[i].pop(request.key)
+                self._segment_put(i + 1, request)
+                return obj
         return None
 
-    def put(self, request):
-        self.segments[0].put(request)
+    def _admit(self, request):
+        self._segment_put(0, request)
+
+    def _evict(self):
+        pass
 
     def _segment_put(self, i, request):
-        self.segments[i].put(request)
+        self.segments[i].admit(request)
         if i == 0:
             return
 
         while self.segments[i].curr_capacity > self.segments[i].capacity:
-            self._segment_put(i - 1, self.segments[i].evict_return())
-
-
-class LRUKSampleCache(BaseCache):
-    def __init__(self, capacity, sample_rate, n_past_intervals, forget_on_evict):
-        super().__init__(capacity)
-        self.sample_rate = sample_rate
-        self.n_past_intervals = n_past_intervals
-        self.forget_on_evict = forget_on_evict
-
-    def get(self, request):
-        return None
-
-    def put(self, request):
-        pass
+            self._segment_put(i - 1, self.segments[i].evict(request))
 
 
 _name_to_cls = {
-    "LRU": LRUCache,
-    "S4LRU": S4LRUCache,
+    "LRU": {
+        "cache": LRUCache,
+        "args": LRUArgs,
+    },
+    "SLRU": {
+        "cache": SLRUCache,
+        "args": SLRUArgs
+    },
 }
 
 
-def initialize_cache(cache_name, **kwargs):
+def initialize_cache(cache_name, capacity, **kwargs):
     try:
-        cls = _name_to_cls[cache_name]
+        cls = _name_to_cls[cache_name]["cache"]
     except KeyError:
         raise KeyError(f"Cache with {cache_name} is not implemented. Check _name_to_cls in caches.py")
-    return cls(**kwargs)
+    args = _name_to_cls[cache_name]["args"](**kwargs)
+    return cls(capacity, args)
 
 
 Cache = NewType("Cache", BaseCache)

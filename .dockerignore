@@ -1,0 +1,2 @@
+./cache_traces/*
+!./cache_traces/wc2800m_ts_51282051n.tr
