@@ -36,23 +36,34 @@ class Simulation:
         self.execution_logger = logger
 
     def run(self):
+        total_count = 0
         miss_count = 0
-        miss_byte = 0
+        total_bytes = 0
+        miss_bytes = 0
+        segment_total_count = 0
+        segment_miss_count = 0
+        segment_total_bytes = 0
+        segment_miss_bytes = 0
         current_trace_index = 0
         start_time = datetime.now()
 
         for request in self._trace_iterator:
-            cache_obj = self._simulator.get(request)
-            if cache_obj is None:
-                miss_count += 1
-                miss_byte += request.size
-                self._simulator.put(request)
-
             # # logs every window number of traces
             if current_trace_index != 0 and current_trace_index % self._ordinal_window == 0:
                 log_window(self.execution_logger, current_trace_index,
-                           self._trace_iterator, miss_byte)
+                           self._trace_iterator, segment_miss_bytes, segment_total_bytes)
+                total_bytes += segment_total_bytes
+                miss_bytes += segment_miss_bytes
+                segment_total_count, segment_miss_count, segment_total_bytes, segment_miss_bytes = 0, 0, 0, 0
 
+            total_bytes += request.size
+            cache_obj = self._simulator.get(request)
+            if cache_obj is None:
+                segment_miss_count += 1
+                segment_miss_bytes += request.size
+                self._simulator.put(request)
+            segment_total_count += 1
+            segment_total_bytes += request.size
             current_trace_index += 1
         end_time = datetime.now()
 
@@ -66,7 +77,7 @@ class Simulation:
             "trace_file": self._trace_iterator.trace_filename,
             "simulation_time": (end_time - start_time).total_seconds(),
             "simulation_timestamp": datetime.now().strftime("%Y-%m-%dT%H:%M:%S"),
-            "no_warmup_byte_miss_ratio": miss_byte / self._trace_iterator.total_size
+            "no_warmup_byte_miss_ratio": miss_bytes / self._trace_iterator.total_size
         }
         return res
 

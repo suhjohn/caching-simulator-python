@@ -2,11 +2,11 @@ from datetime import datetime
 import logging
 
 
-def log_window(logger, current_trace_index, trace_iterator, miss_byte):
+def log_window(logger, current_trace_index, trace_iterator, miss_bytes, total_bytes):
     logger.info(f"[{datetime.utcnow().isoformat()}] "
                 f"[log_window] "
                 f"{current_trace_index} "
-                f"bmr: {miss_byte / trace_iterator.total_size} ")
+                f"bmr: {miss_bytes / total_bytes} ")
 
 
 def setup_logger(name, log_file, level=logging.INFO):
