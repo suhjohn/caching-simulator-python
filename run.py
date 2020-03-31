@@ -17,6 +17,52 @@ TEMPORAL_FORMATS = {
 }
 
 
+class SegmentStatistics:
+    def __init__(self):
+        self.segment_total_count_list = []
+        self.segment_total_bytes_list = []
+        self.segment_miss_count_list = []
+        self.segment_miss_bytes_list = []
+        self.segment_total_count = 0
+        self.segment_miss_count = 0
+        self.segment_total_bytes = 0
+        self.segment_miss_bytes = 0
+
+    def record_segment(self):
+        self.segment_total_count_list.append(self.segment_total_count)
+        self.segment_total_bytes_list.append(self.segment_total_bytes)
+        self.segment_miss_count_list.append(self.segment_miss_count)
+        self.segment_miss_bytes_list.append(self.segment_miss_bytes)
+        self.segment_total_count = 0
+        self.segment_miss_count = 0
+        self.segment_total_bytes = 0
+        self.segment_miss_bytes = 0
+
+    def update_miss(self, request):
+        self.segment_miss_count += 1
+        self.segment_miss_bytes += request.size
+
+    def update_req(self, request):
+        self.segment_total_count += 1
+        self.segment_total_bytes += request.size
+
+    def curr_bmr(self):
+        return self.segment_miss_bytes / self.segment_total_bytes
+
+    def curr_omr(self):
+        return self.segment_miss_count / self.segment_total_count
+
+    def bmr(self, warmup=0):
+        assert 0 <= warmup < 100
+        start_index = int(len(self.segment_total_count_list) * warmup / 100)
+        return sum(self.segment_miss_bytes_list[start_index:]) / sum(self.segment_total_bytes_list[start_index:])
+
+    def omr(self, warmup=0):
+        assert 0 <= warmup < 100
+        start_index = int(len(self.segment_total_count_list) * warmup / 100)
+        return sum(self.segment_miss_count_list[start_index:]) / sum(self.segment_total_bytes_list[start_index:])
+
+
 class Simulation:
     def __init__(self, caching_stack, trace_iterator,
                  ordinal_window=100000, temporal_window=600, temporal_format='s'):
@@ -36,36 +82,24 @@ class Simulation:
         self.execution_logger = logger
 
     def run(self):
-        total_count = 0
-        miss_count = 0
-        total_bytes = 0
-        miss_bytes = 0
-        segment_total_count = 0
-        segment_miss_count = 0
-        segment_total_bytes = 0
-        segment_miss_bytes = 0
         current_trace_index = 0
         start_time = datetime.now()
-
+        segment_statistics = SegmentStatistics()
         for request in self._trace_iterator:
             # # logs every window number of traces
             if current_trace_index != 0 and current_trace_index % self._ordinal_window == 0:
                 log_window(self.execution_logger, current_trace_index,
-                           self._trace_iterator, segment_miss_bytes, segment_total_bytes)
-                total_bytes += segment_total_bytes
-                miss_bytes += segment_miss_bytes
-                segment_total_count, segment_miss_count, segment_total_bytes, segment_miss_bytes = 0, 0, 0, 0
+                           self._trace_iterator, segment_statistics.curr_bmr(), segment_statistics.curr_omr())
+                segment_statistics.record_segment()
 
-            total_bytes += request.size
             if self._simulator.get(request) is None:
-                segment_miss_count += 1
-                segment_miss_bytes += request.size
+                segment_statistics.update_miss(request)
                 self._simulator.put(request)
-            segment_total_count += 1
-            segment_total_bytes += request.size
+            segment_statistics.update_req(request)
             current_trace_index += 1
         end_time = datetime.now()
 
+        segment_count = len(segment_total_count_list)
         res = {
             "cache_type": str(self._simulator.cache_instance),
             "cache_args": dict(self._simulator.cache_instance.args._asdict()),
@@ -77,7 +111,18 @@ class Simulation:
             "trace_file": self._trace_iterator.trace_filename,
             "simulation_time": (end_time - start_time).total_seconds(),
             "simulation_timestamp": datetime.now().strftime("%Y-%m-%dT%H:%M:%S"),
-            "no_warmup_byte_miss_ratio": miss_bytes / self._trace_iterator.total_size
+            "no_warmup_byte_miss_ratio": segment_statistics.bmr(),
+            "segment_stats": {
+                "segment_total_count": segment_statistics.segment_total_count_list,
+                "segment_total_bytes": segment_statistics.segment_total_bytes_list,
+                "segment_miss_count": segment_statistics.segment_miss_count_list,
+                "segment_miss_bytes": segment_statistics.segment_miss_bytes_list,
+
+            },
+            "20p_warmup_bmr": segment_statistics.bmr(20),
+            "50p_warmup_bmr": segment_statistics.bmr(50),
+            "20p_warmup_omr": segment_statistics.omr(20),
+            "50p_warmup_omr": segment_statistics.omr(50),
         }
         return res
 
