@@ -84,8 +84,8 @@ class Simulation:
 
 def run(cache_type, cache_size, file_path, trace_type, filter_type, filter_args, result_identifier,
         log_eviction, ordinal_window, temporal_window,
-        eviction_log_dir, execution_log_dir, simulation_res_dir):
-    file_path = "./cache_traces/" + file_path
+        trace_dir, eviction_log_dir, execution_log_dir, simulation_res_dir):
+    file_path = f"{trace_dir}/{file_path}"
     filter_instance = initialize_filter(filter_type, **filter_args)
     cache_instance = initialize_cache(cache_type, cache_size)
     caching_stack = CachingSystem(filter_instance, cache_instance)
@@ -124,6 +124,7 @@ if __name__ == "__main__":
     parser.add_argument('--resultIdentifier', default="regular", dest='resultIdentifier')
     args = parser.parse_args()
 
+    trace_dir = os.environ["TRACE_DIRECTORY"] or settings.TRACE_DIRECTORY
     eviction_log_dir = os.environ["EVICTION_LOGGING_RESULT_DIRECTORY"] or settings.EVICTION_LOGGING_RESULT_DIRECTORY
     execution_log_dir = os.environ["EXECUTION_LOGGING_RESULT_DIRECTORY"] or settings.EXECUTION_LOGGING_RESULT_DIRECTORY
     simulation_res_dir = os.environ["SIMULATION_RESULT_DIRECTORY"] or settings.SIMULATION_RESULT_DIRECTORY
@@ -145,5 +146,5 @@ if __name__ == "__main__":
         args.logEviction,
         args.ordinalWindowSize,
         args.temporalWindowSize,
-        eviction_log_dir, execution_log_dir, simulation_res_dir
+        trace_dir, eviction_log_dir, execution_log_dir, simulation_res_dir
     )
