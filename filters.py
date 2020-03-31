@@ -158,8 +158,6 @@ class PercentileFrequencyFilter(BaseFilter):
             return False
 
         should_filter = request.size > self.sorted_sizes[self.percentile_index]
-        if should_filter:
-            print(request.size, self.sorted_sizes[self.percentile_index], should_filter)
         oldest_req = self.sliding_window.popleft()
         self.sorted_sizes.remove(oldest_req.size)
         self.sliding_window.append(request)
