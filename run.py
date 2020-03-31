@@ -57,8 +57,7 @@ class Simulation:
                 segment_total_count, segment_miss_count, segment_total_bytes, segment_miss_bytes = 0, 0, 0, 0
 
             total_bytes += request.size
-            cache_obj = self._simulator.get(request)
-            if cache_obj is None:
+            if self._simulator.get(request) is None:
                 segment_miss_count += 1
                 segment_miss_bytes += request.size
                 self._simulator.put(request)
@@ -74,6 +73,7 @@ class Simulation:
             "cache_size": self._simulator.cache_instance.capacity,
             "filter_type": str(self._simulator.filter_instance),
             "filter_args": dict(self._simulator.filter_instance.args._asdict()),
+            "filter_id": self._simulator.filter_instance.id,
             "trace_file": self._trace_iterator.trace_filename,
             "simulation_time": (end_time - start_time).total_seconds(),
             "simulation_timestamp": datetime.now().strftime("%Y-%m-%dT%H:%M:%S"),
@@ -82,10 +82,10 @@ class Simulation:
         return res
 
 
-def run(cache_type, cache_size, file_path, trace_type, filter_type, result_identifier,
+def run(cache_type, cache_size, file_path, trace_type, filter_type, filter_args, result_identifier,
         log_eviction, ordinal_window, temporal_window):
     file_path = "./cache_traces/" + file_path
-    filter_instance = initialize_filter(filter_type)
+    filter_instance = initialize_filter(filter_type, **filter_args)
     cache_instance = initialize_cache(cache_type, cache_size)
     caching_stack = CachingSystem(filter_instance, cache_instance)
     trace_iterator = initialize_iterator(trace_type, file_path)
@@ -118,25 +118,27 @@ if __name__ == "__main__":
     parser.add_argument('traceFile')
     parser.add_argument('--logEviction', default=False, type=bool)
     parser.add_argument('--temporalWindowSize', default=600, type=int)
-    parser.add_argument('--ordinalWindowSize', default=100000, type=int)
+    parser.add_argument('--ordinalWindowSize', default=1000000, type=int)
     parser.add_argument('--traceType', default=DEFAULT_TRACE_TYPE, dest='traceType')
-    parser.add_argument('--cacheArgs', dest='filterArgs')
     parser.add_argument('--filterType', default="Null", dest='filterType')
-    parser.add_argument('--filterArgs', dest='filterArgs')
     parser.add_argument('--resultIdentifier', default="regular", dest='resultIdentifier')
     args = parser.parse_args()
+
+
     if not os.path.exists(settings.EVICTION_LOGGING_RESULT_DIRECTORY):
         os.makedirs(settings.EVICTION_LOGGING_RESULT_DIRECTORY)
     if not os.path.exists(settings.EXECUTION_LOGGING_RESULT_DIRECTORY):
         os.makedirs(settings.EXECUTION_LOGGING_RESULT_DIRECTORY)
     if not os.path.exists(settings.SIMULATION_RESULT_DIRECTORY):
         os.makedirs(settings.SIMULATION_RESULT_DIRECTORY)
+    filter_args = settings.FILTER_ARGS
     run(
         args.cacheType,
         args.cacheSize,
         args.traceFile,
         args.traceType,
         args.filterType,
+        filter_args,
         args.resultIdentifier,
         args.logEviction,
         args.ordinalWindowSize,

@@ -1,14 +1,29 @@
+import hashlib
 from abc import abstractmethod, ABC
 from typing import NewType, NamedTuple
-
-from collections import defaultdict, namedtuple
+from sortedcontainers import SortedList
+from collections import defaultdict, namedtuple, deque
 import bloom_filter
 import math
+
+from quickselect import kthSmallest
 
 
 class BaseFilter(ABC):
     def __init__(self, args):
         self.args: NamedTuple = args
+
+    @property
+    def id(self):
+        h = hashlib.blake2s(digest_size=8)
+        args = self.args._asdict()
+        keys = sorted(args.keys())
+        args_list = []
+        for key in keys:
+            args_list.append(key)
+            args_list.append(args[key])
+        h.update(f"{self.__class__.__name__}({tuple(args_list)})".encode())
+        return h.hexdigest()
 
     @abstractmethod
     def should_filter(self, request):
@@ -60,7 +75,7 @@ class BloomFilter(BaseFilter):
          m: int, size of the filter
         """
         super().__init__(args)
-        self._filters = [pybloomfilter.BloomFilter(args.m, error_rate=0.001) for _ in range(2)]
+        self._filters = [bloom_filter.BloomFilter(args.m, error_rate=0.001) for _ in range(2)]
         self._current_filter = 0
         self._m = args.m
         self._i = 0
@@ -88,6 +103,70 @@ class BloomFilter(BaseFilter):
         return key in self._filters[0] or key in self._filters[1]
 
 
+PercentileFilterArgs = namedtuple("PercentileFilterArgs", ["size", "percentile"])
+
+
+class PercentileFilter(BaseFilter):
+    default_args = PercentileFilterArgs(1000000, 75)
+
+    def __init__(self, args):
+        super().__init__(args)
+        self.sliding_window = deque(maxlen=args.size)
+        self.sorted_sizes = SortedList()
+        self.window_size = args.size
+        self.percentile = args.percentile
+        self.percentile_index = int(args.size * (args.percentile / 100))
+        self.curr_index = 0
+
+    def should_filter(self, request) -> bool:
+        if self.curr_index < self.window_size:
+            self.sliding_window.append(request)
+            self.sorted_sizes.add(request.size)
+            self.curr_index += 1
+            return False
+
+        should_filter = request.size > self.sorted_sizes[self.percentile_index]
+        if should_filter:
+            print(request.size, self.sorted_sizes[self.percentile_index], should_filter)
+        oldest_req = self.sliding_window.popleft()
+        self.sorted_sizes.remove(oldest_req.size)
+        self.sliding_window.append(request)
+        self.sorted_sizes.add(request.size)
+        return should_filter
+
+
+PercentileFrequencyFilterArgs = namedtuple("PercentileFrequencyFilterArgs", ["size", "percentile"])
+
+
+class PercentileFrequencyFilter(BaseFilter):
+
+    def __init__(self, args):
+        super().__init__(args)
+        self.sliding_window = deque(maxlen=args.size)
+        self.sorted_sizes = SortedList()
+        self.window_size = args.size
+        self.percentile = args.percentile
+        self.percentile_index = int(args.size * (args.percentile / 100))
+
+        self.curr_index = 0
+
+    def should_filter(self, request) -> bool:
+        if self.curr_index < self.window_size:
+            self.sliding_window.append(request)
+            self.sorted_sizes.add(request.size)
+            self.curr_index += 1
+            return False
+
+        should_filter = request.size > self.sorted_sizes[self.percentile_index]
+        if should_filter:
+            print(request.size, self.sorted_sizes[self.percentile_index], should_filter)
+        oldest_req = self.sliding_window.popleft()
+        self.sorted_sizes.remove(oldest_req.size)
+        self.sliding_window.append(request)
+        self.sorted_sizes.add(request.size)
+        return should_filter
+
+
 _name_to_cls = {
     "Bloom": {
         "filter": BloomFilter,
@@ -100,6 +179,10 @@ _name_to_cls = {
     "Null": {
         "filter": NullFilter,
         "args": NullFilterArgs
+    },
+    "Percentile": {
+        "filter": PercentileFilter,
+        "args": PercentileFilterArgs
     }
 }
 

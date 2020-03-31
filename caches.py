@@ -44,7 +44,7 @@ class BaseCache(ABC):
 
     @property
     def id(self):
-        h = hashlib.blake2s(digest_size=16)
+        h = hashlib.blake2s(digest_size=8)
         args = self.args._asdict()
         keys = sorted(args.keys())
         args_list = []

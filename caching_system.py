@@ -18,7 +18,8 @@ class CachingSystem:
 
     @property
     def id(self):
-        return f"{self.cache_instance}_{self.cache_instance.capacity}_{self.cache_instance.id}_{self.filter_instance}"
+        return f"{self.cache_instance}_{self.cache_instance.capacity}_" \
+               f"{self.cache_instance.id}_{self.filter_instance}_{self.filter_instance.id}"
 
     def put(self, request):
         if self.filter_instance.should_filter(request):
