@@ -4,7 +4,7 @@ from caches import Cache, CacheObject
 from filters import Filter
 
 
-class CachingSystemSimulator:
+class CachingSystem:
     """
     A simulation of the entire caching stack
     """
@@ -18,15 +18,12 @@ class CachingSystemSimulator:
 
     @property
     def id(self):
-        return f"{self.cache_instance}_{self.cache_instance.id}_{self.filter_instance}"
+        return f"{self.cache_instance}_{self.cache_instance.capacity}_{self.cache_instance.id}_{self.filter_instance}"
 
     def put(self, request):
         if self.filter_instance.should_filter(request):
             return False
-        if not self.cache_instance.get(request):
-            self.cache_instance.admit(request)
-            return False
-        return True
+        self.cache_instance.admit(request)
 
     def get(self, request) -> CacheObject:
         """

@@ -34,12 +34,13 @@ class BaseCache(ABC):
         self.args: NamedTuple = args
         self.curr_capacity = 0
         self.eviction_logger: Logger = None
+        self.eviction_fn = self._evict_without_logging
 
     def __repr__(self):
         return f"{self.__class__.__name__}({self.capacity},{self.args})"
 
     def __str__(self):
-        return f"{self.__class__.__name__}_{self.capacity}"
+        return f"{self.__class__.__name__}"
 
     @property
     def id(self):
@@ -55,11 +56,19 @@ class BaseCache(ABC):
 
     def set_eviction_logger(self, logger):
         self.eviction_logger = logger
+        self.eviction_fn = self._evict_with_logging
 
-    def evict(self, request: CacheRequest) -> Optional[CacheObject]:
+    def _evict_with_logging(self, request):
         obj = self._evict()
         self.eviction_logger.info(obj.as_log(request))
         return obj
+
+    def _evict_without_logging(self, request):
+        obj = self._evict()
+        return obj
+
+    def evict(self, request: CacheRequest) -> Optional[CacheObject]:
+        return self.eviction_fn(request)
 
     def admit(self, request: CacheRequest) -> None:
         self._admit(request)
@@ -120,18 +129,16 @@ class LRUCache(BaseCache):
         return self.map[request.key]
 
     def _admit(self, request: CacheRequest):
-        # object feasible to store?
         if request.size > self.capacity:
             return False
 
         while self.curr_capacity + request.size > self.capacity:
             self.evict(request)
 
-        if request.key in self.map:
-            self.map.move_to_end(request.key)
-        else:
+        if request.key not in self.map:
             self.curr_capacity += request.size
             self.map[request.key] = CacheObject(request.key, request.size, request.ts, request.index)
+        self.map.move_to_end(request.key)
         return True
 
     def pop(self, key):
@@ -144,7 +151,13 @@ class LRUCache(BaseCache):
             return None
 
 
-SLRUArgs = namedtuple("S4LRUArgs", ["n", "ratios"])
+class SLRUArgs:
+    def __init__(self, n=4, ratios=[0.25, 0.25, 0.25, 0.25]):
+        self.n = n
+        self.ratios = ratios
+
+    def _asdict(self):
+        return OrderedDict({"n": self.n, "ratios": self.ratios})
 
 
 class SLRUCache(BaseCache):

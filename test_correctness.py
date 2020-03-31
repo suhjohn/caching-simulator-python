@@ -9,5 +9,4 @@ def test_lru():
         cache_snapshot = execute_traces(cache_cls, trace_info)
         assert_expected_responses(cache_snapshot, trace_info)
 
-def test_s4lru():
-    cache_info = cache_info_map["s4lru"]
+test_lru()

@@ -5,9 +5,9 @@ import argparse
 from datetime import datetime
 import settings
 
-from caching_stack import CachingSystemSimulator
+from caching_system import CachingSystem
 from caches import initialize_cache
-from filters import NullFilter, initialize_filter
+from filters import initialize_filter
 
 from logger import log_window, setup_logger
 from traces import initialize_iterator, DEFAULT_TRACE_TYPE
@@ -36,22 +36,22 @@ class Simulation:
         self.execution_logger = logger
 
     def run(self):
-        no_warmup_miss_count = 0
-        no_warmup_miss_byte = 0
+        miss_count = 0
+        miss_byte = 0
         current_trace_index = 0
         start_time = datetime.now()
 
         for request in self._trace_iterator:
             cache_obj = self._simulator.get(request)
             if cache_obj is None:
-                no_warmup_miss_count += 1
-                no_warmup_miss_byte += request.size
+                miss_count += 1
+                miss_byte += request.size
                 self._simulator.put(request)
 
             # # logs every window number of traces
             if current_trace_index != 0 and current_trace_index % self._ordinal_window == 0:
                 log_window(self.execution_logger, current_trace_index,
-                           self._trace_iterator, no_warmup_miss_byte)
+                           self._trace_iterator, miss_byte)
 
             current_trace_index += 1
         end_time = datetime.now()
@@ -66,29 +66,35 @@ class Simulation:
             "trace_file": self._trace_iterator.trace_filename,
             "simulation_time": (end_time - start_time).total_seconds(),
             "simulation_timestamp": datetime.now().strftime("%Y-%m-%dT%H:%M:%S"),
-            "no_warmup_byte_miss_ratio": no_warmup_miss_byte / self._trace_iterator.total_size
+            "no_warmup_byte_miss_ratio": miss_byte / self._trace_iterator.total_size
         }
         return res
 
 
-def run(cache_type, cache_size, file_path, trace_type, filter_type, result_identifier):
+def run(cache_type, cache_size, file_path, trace_type, filter_type, result_identifier,
+        log_eviction, ordinal_window, temporal_window):
     file_path = "./cache_traces/" + file_path
     filter_instance = initialize_filter(filter_type)
     cache_instance = initialize_cache(cache_type, cache_size)
-    caching_stack = CachingSystemSimulator(filter_instance, cache_instance)
+    caching_stack = CachingSystem(filter_instance, cache_instance)
     trace_iterator = initialize_iterator(trace_type, file_path)
-    simulation = Simulation(caching_stack, trace_iterator)
-    eviction_logger = setup_logger(
-        "eviction_logger",
-        f"{settings.EVICTION_LOGGING_RESULT_DIRECTORY}/{simulation.id}.log"
-    )
+    simulation = Simulation(caching_stack, trace_iterator, ordinal_window, temporal_window)
+    if log_eviction:
+        eviction_logger = setup_logger(
+            "eviction_logger",
+            f"{settings.EVICTION_LOGGING_RESULT_DIRECTORY}/{simulation.id}_eviction.log"
+        )
+        cache_instance.set_eviction_logger(eviction_logger)
     execution_logger = setup_logger(
         "execution_logger",
-        f"{settings.EXECUTION_LOGGING_RESULT_DIRECTORY}/{simulation.id}.log"
+        f"{settings.EXECUTION_LOGGING_RESULT_DIRECTORY}/{simulation.id}_execution.log"
     )
-    cache_instance.set_eviction_logger(eviction_logger)
     simulation.set_execution_logger(execution_logger)
     res = simulation.run()
+    if log_eviction:
+        res['eviction_logging'] = True
+    else:
+        res['eviction_logging'] = False
     with open(f"{settings.SIMULATION_RESULT_DIRECTORY}/"
               f"{simulation.id}_{result_identifier}.json", "w") as f:
         json.dump(res, f, sort_keys=True, indent=4)
@@ -99,6 +105,7 @@ if __name__ == "__main__":
     parser.add_argument('cacheType')
     parser.add_argument('cacheSize', type=int)
     parser.add_argument('traceFile')
+    parser.add_argument('--logEviction', default=False, type=bool)
     parser.add_argument('--temporalWindowSize', default=600, type=int)
     parser.add_argument('--ordinalWindowSize', default=100000, type=int)
     parser.add_argument('--traceType', default=DEFAULT_TRACE_TYPE, dest='traceType')
@@ -120,4 +127,7 @@ if __name__ == "__main__":
         args.traceType,
         args.filterType,
         args.resultIdentifier,
+        args.logEviction,
+        args.ordinalWindowSize,
+        args.temporalWindowSize,
     )
