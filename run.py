@@ -60,7 +60,7 @@ class SegmentStatistics:
     def omr(self, warmup=0):
         assert 0 <= warmup < 100
         start_index = int(len(self.segment_total_count_list) * warmup / 100)
-        return sum(self.segment_miss_count_list[start_index:]) / sum(self.segment_total_bytes_list[start_index:])
+        return sum(self.segment_miss_count_list[start_index:]) / sum(self.segment_total_count_list[start_index:])
 
 
 class Simulation:
@@ -86,20 +86,18 @@ class Simulation:
         start_time = datetime.now()
         segment_statistics = SegmentStatistics()
         for request in self._trace_iterator:
+            if self._simulator.get(request) is None:
+                segment_statistics.update_miss(request)
+                self._simulator.put(request)
+            segment_statistics.update_req(request)
             # # logs every window number of traces
             if current_trace_index != 0 and current_trace_index % self._ordinal_window == 0:
                 log_window(self.execution_logger, current_trace_index,
                            self._trace_iterator, segment_statistics.curr_bmr(), segment_statistics.curr_omr())
                 segment_statistics.record_segment()
-
-            if self._simulator.get(request) is None:
-                segment_statistics.update_miss(request)
-                self._simulator.put(request)
-            segment_statistics.update_req(request)
             current_trace_index += 1
+        segment_statistics.record_segment()
         end_time = datetime.now()
-
-        segment_count = len(segment_total_count_list)
         res = {
             "cache_type": str(self._simulator.cache_instance),
             "cache_args": dict(self._simulator.cache_instance.args._asdict()),
