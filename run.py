@@ -83,7 +83,8 @@ class Simulation:
 
 
 def run(cache_type, cache_size, file_path, trace_type, filter_type, filter_args, result_identifier,
-        log_eviction, ordinal_window, temporal_window):
+        log_eviction, ordinal_window, temporal_window,
+        eviction_log_dir, execution_log_dir, simulation_res_dir):
     file_path = "./cache_traces/" + file_path
     filter_instance = initialize_filter(filter_type, **filter_args)
     cache_instance = initialize_cache(cache_type, cache_size)
@@ -93,12 +94,12 @@ def run(cache_type, cache_size, file_path, trace_type, filter_type, filter_args,
     if log_eviction:
         eviction_logger = setup_logger(
             "eviction_logger",
-            f"{settings.EVICTION_LOGGING_RESULT_DIRECTORY}/{simulation.id}_eviction.log"
+            f"{eviction_log_dir}/{simulation.id}_eviction.log"
         )
         cache_instance.set_eviction_logger(eviction_logger)
     execution_logger = setup_logger(
         "execution_logger",
-        f"{settings.EXECUTION_LOGGING_RESULT_DIRECTORY}/{simulation.id}_execution.log"
+        f"{execution_log_dir}/{simulation.id}_execution.log"
     )
     simulation.set_execution_logger(execution_logger)
     res = simulation.run()
@@ -106,8 +107,7 @@ def run(cache_type, cache_size, file_path, trace_type, filter_type, filter_args,
         res['eviction_logging'] = True
     else:
         res['eviction_logging'] = False
-    with open(f"{settings.SIMULATION_RESULT_DIRECTORY}/"
-              f"{simulation.id}_{result_identifier}.json", "w") as f:
+    with open(f"{simulation_res_dir}/{simulation.id}_{result_identifier}.json", "w") as f:
         json.dump(res, f, sort_keys=True, indent=4)
 
 
@@ -124,13 +124,15 @@ if __name__ == "__main__":
     parser.add_argument('--resultIdentifier', default="regular", dest='resultIdentifier')
     args = parser.parse_args()
 
-
-    if not os.path.exists(settings.EVICTION_LOGGING_RESULT_DIRECTORY):
-        os.makedirs(settings.EVICTION_LOGGING_RESULT_DIRECTORY)
-    if not os.path.exists(settings.EXECUTION_LOGGING_RESULT_DIRECTORY):
-        os.makedirs(settings.EXECUTION_LOGGING_RESULT_DIRECTORY)
-    if not os.path.exists(settings.SIMULATION_RESULT_DIRECTORY):
-        os.makedirs(settings.SIMULATION_RESULT_DIRECTORY)
+    eviction_log_dir = os.environ["EVICTION_LOGGING_RESULT_DIRECTORY"] or settings.EVICTION_LOGGING_RESULT_DIRECTORY
+    execution_log_dir = os.environ["EXECUTION_LOGGING_RESULT_DIRECTORY"] or settings.EXECUTION_LOGGING_RESULT_DIRECTORY
+    simulation_res_dir = os.environ["SIMULATION_RESULT_DIRECTORY"] or settings.SIMULATION_RESULT_DIRECTORY
+    if not os.path.exists(eviction_log_dir):
+        os.makedirs(eviction_log_dir)
+    if not os.path.exists(execution_log_dir):
+        os.makedirs(execution_log_dir)
+    if not os.path.exists(simulation_res_dir):
+        os.makedirs(simulation_res_dir)
     filter_args = settings.FILTER_ARGS
     run(
         args.cacheType,
@@ -143,4 +145,5 @@ if __name__ == "__main__":
         args.logEviction,
         args.ordinalWindowSize,
         args.temporalWindowSize,
+        eviction_log_dir, execution_log_dir, simulation_res_dir
     )
