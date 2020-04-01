@@ -61,6 +61,21 @@ class BypassFilter(BaseFilter):
         return request.size > self.threshold_size
 
 
+SetFilterArgs = namedtuple("SetFilterArgs", [])
+
+
+class SetFilter(BaseFilter):
+
+    def __init__(self, args):
+        super().__init__(args)
+        self._set = set()
+
+    def should_filter(self, request):
+        should_filter = request.key not in self._set
+        self._set.add(should_filter)
+        return should_filter
+
+
 BloomFilterArgs = namedtuple("BloomFilterArgs", ["m"])
 
 
@@ -75,7 +90,7 @@ class BloomFilter(BaseFilter):
          m: int, size of the filter
         """
         super().__init__(args)
-        self._filters = [bloom_filter.BloomFilter(args.m, error_rate=0.001) for _ in range(2)]
+        self._filters = [bloom_filter.BloomFilter(args.m, error_rate=0.01) for _ in range(2)]
         self._current_filter = 0
         self._m = args.m
         self._i = 0
@@ -178,6 +193,10 @@ _name_to_cls = {
     "Percentile": {
         "filter": PercentileFilter,
         "args": PercentileFilterArgs
+    },
+    "Set": {
+        "filter": SetFilter,
+        "args": SetFilterArgs
     }
 }
 
