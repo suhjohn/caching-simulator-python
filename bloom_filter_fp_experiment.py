@@ -3,13 +3,13 @@ import argparse
 import os
 
 import settings
-from filters import BloomFilter, SetFilter, SetFilterArgs
+from filters import BloomFilter, SetFilter, SetFilterArgs, BloomFilterArgs
 from traces import initialize_iterator, DEFAULT_TRACE_TYPE
 
 
 def run_test(trace_dir, trace_file, filter_args):
     trace_file_path = f"{trace_dir}/{trace_file}"
-    bloom_filter = BloomFilter(filter_args)
+    bloom_filter = BloomFilter(BloomFilterArgs(**filter_args))
     set_filter = SetFilter(SetFilterArgs())
     trace_iterator = initialize_iterator(DEFAULT_TRACE_TYPE, trace_file_path)
 
