@@ -42,6 +42,8 @@ def run_test(trace_dir, trace_file, filter_args, result_dir):
     # false_positive_unique_object_count: total count of unique objects
     #                                     that were falsely identified as existing in the filter
     res = {
+        "trace_file": trace_iterator.trace_filename,
+        "n": filter_args.n,
         "total_request_count": trace_iterator.total_count,
         "total_object_count": len(unique_keys),
         "one_hit_wonder_object_count": len(unique_keys) - len(non_one_hit_wonder),
