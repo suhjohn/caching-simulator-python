@@ -72,7 +72,7 @@ class SetFilter(BaseFilter):
 
     def should_filter(self, request):
         should_filter = request.key not in self._set
-        self._set.add(should_filter)
+        self._set.add(request.key)
         return should_filter
 
 
