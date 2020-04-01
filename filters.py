@@ -90,7 +90,7 @@ class BloomFilter(BaseFilter):
          m: int, size of the filter
         """
         super().__init__(args)
-        self._filters = [bloom_filter.BloomFilter(args.m, error_rate=0.001) for _ in range(2)]
+        self._filters = [bloom_filter.BloomFilter(args.n, error_rate=0.001) for _ in range(2)]
         self._current_filter = 0
         self._n = args.n
         self._i = 0
