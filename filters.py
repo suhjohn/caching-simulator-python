@@ -68,15 +68,15 @@ class SetFilter(BaseFilter):
 
     def __init__(self, args):
         super().__init__(args)
-        self._set = set()
+        self.set = set()
 
     def should_filter(self, request):
-        should_filter = request.key not in self._set
-        self._set.add(request.key)
+        should_filter = request.key not in self.set
+        self.set.add(request.key)
         return should_filter
 
 
-BloomFilterArgs = namedtuple("BloomFilterArgs", ["m"])
+BloomFilterArgs = namedtuple("BloomFilterArgs", ["n"])
 
 
 class BloomFilter(BaseFilter):
@@ -90,9 +90,9 @@ class BloomFilter(BaseFilter):
          m: int, size of the filter
         """
         super().__init__(args)
-        self._filters = [bloom_filter.BloomFilter(args.m, error_rate=0.01) for _ in range(2)]
+        self._filters = [bloom_filter.BloomFilter(args.m, error_rate=0.001) for _ in range(2)]
         self._current_filter = 0
-        self._m = args.m
+        self._n = args.n
         self._i = 0
 
     def should_filter(self, request) -> bool:
@@ -103,10 +103,10 @@ class BloomFilter(BaseFilter):
 
     def put(self, key):
         """ insert the pair (key,value) in the database """
-        if self._i > self._m:
+        if self._i > self._n:
             self._i = 0
             self._current_filter = 1 if self._current_filter == 0 else 0
-            self._filters[self._current_filter] = bloom_filter.BloomFilter(self._m, error_rate=0.001)
+            self._filters[self._current_filter] = bloom_filter.BloomFilter(self._n, error_rate=0.001)
 
         if key not in self._filters[self._current_filter]:
             self._filters[self._current_filter].add(key)

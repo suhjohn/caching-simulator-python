@@ -8,7 +8,7 @@ from filters import BloomFilter, SetFilter, SetFilterArgs, BloomFilterArgs
 from traces import initialize_iterator, DEFAULT_TRACE_TYPE
 
 
-def run_test(trace_dir, trace_file, filter_args):
+def run_test(trace_dir, trace_file, filter_args, result_dir):
     trace_file_path = f"{trace_dir}/{trace_file}"
     bloom_filter = BloomFilter(BloomFilterArgs(**filter_args))
     set_filter = SetFilter(SetFilterArgs())
@@ -57,7 +57,7 @@ def run_test(trace_dir, trace_file, filter_args):
         "non_one_hit_wonder_pass_object_count": len(bloom_filter_false_positives.intersection(non_one_hit_wonder)),
     }
 
-    output_filepath = f"{trace_dir}/{trace_file}_bloomfp.json"
+    output_filepath = f"{result_dir}/{trace_file}_bloomfp_{filter_args.n}.json"
     with open(f"{output_filepath}", "w") as f:
         json.dump(res, f, sort_keys=True, indent=4)
 
@@ -68,5 +68,6 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     trace_dir = os.environ.get("TRACE_DIRECTORY", settings.TRACE_DIRECTORY)
+    result_dir = os.environ["BLOOM_FP_RESULT_DIRECTORY"]
     filter_args = settings.FILTER_ARGS
-    run_test(trace_dir, args.traceFile, filter_args)
+    run_test(trace_dir, args.traceFile, filter_args, result_dir)
