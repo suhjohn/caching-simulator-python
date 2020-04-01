@@ -18,7 +18,7 @@ def run_test(trace_dir, trace_file, filter_args):
         fp_count += int(bloom_filter.should_filter(request) != set_filter.should_filter(request))
 
     print(fp_count / trace_iterator.total_count)
-    
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -27,3 +27,4 @@ if __name__ == "__main__":
 
     trace_dir = os.environ.get("TRACE_DIRECTORY", settings.TRACE_DIRECTORY)
     filter_args = settings.FILTER_ARGS
+    run_test(trace_dir, args.traceFile, filter_args)
