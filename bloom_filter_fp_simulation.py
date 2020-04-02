@@ -94,5 +94,5 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
     run_simulation(
-        args.cacheType, args.cacheSize, args.traceType, args.traceFile, args.n, result_dir
+        args.cacheType, args.cacheSize, args.traceType, args.traceFile, int(args.n), result_dir
     )
