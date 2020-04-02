@@ -45,21 +45,15 @@ def run_simulation(cache_type, cache_size, trace_type, file_path, n, result_dir)
     trace_iterator_3 = iter(initialize_iterator(trace_type, file_path))
     tracking_set_filter = SetFilter(SetFilterArgs())
     # when the second time a key is seen, if the caching_system.get returns True, it's a surprise hit.
+    second_occurence_keys = set()
     key_seen_second_time_index = set()
-    while True:
-        set_sim_tick = set_simulation.tick()
-        bloom_sim_tick = bloom_simulation.tick()
-        try:
-            req = next(trace_iterator_3)
-            tracking_set_filter.should_filter(req)
-            tracking_filter_tick = True
-            key_seen_second_time_index.add(req.index)
-        except:
-            tracking_filter_tick = False
-        if not set_sim_tick and not bloom_sim_tick and not tracking_filter_tick:
-            break
-        elif set_sim_tick != bloom_sim_tick or set_sim_tick != tracking_filter_tick:
-            raise Exception("This should not happen since both simulations should end the same time. ")
+    set_simulation.run()
+    bloom_simulation.run()
+    for request in trace_iterator_3:
+        if not tracking_set_filter.should_filter(request) and request.key not in second_occurence_keys:
+            key_seen_second_time_index.add(request.index)
+            second_occurence_keys.add(request.key)
+            
     bloom_hit_request_indexes = set(bloom_callback_container.hit.keys())
     set_hit_request_indexes = set(set_callback_container.hit.keys())
     unique_bloom_hit_request_indexes = bloom_hit_request_indexes - set_hit_request_indexes

@@ -105,10 +105,9 @@ class Simulation:
             "50p_warmup_omr": self._segment_statistics.omr(50),
         }
 
-    def tick(self):
-        trace_iterator = iter(self._trace_iterator)
-        try:
-            request = next(trace_iterator)
+    def run(self):
+        start_time = datetime.now()
+        for request in self._trace_iterator:
             if self._simulator.get(request) is None:
                 self._segment_statistics.update_miss(request)
                 self._simulator.put(request)
@@ -122,15 +121,7 @@ class Simulation:
                            self._segment_statistics.curr_omr())
                 self._segment_statistics.record_segment()
             self._curr_trace_index += 1
-            return True
-        except StopIteration:
-            self._segment_statistics.record_segment()
-            return False
 
-    def run(self):
-        start_time = datetime.now()
-        while self.tick():
-            pass
         end_time = datetime.now()
         res = self.get_state()
         res["simulation_time"] = (end_time - start_time).total_seconds()
