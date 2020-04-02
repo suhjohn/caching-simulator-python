@@ -53,7 +53,7 @@ def run_simulation(cache_type, cache_size, trace_type, file_path, n, result_dir)
         if not tracking_set_filter.should_filter(request) and request.key not in second_occurence_keys:
             key_seen_second_time_index.add(request.index)
             second_occurence_keys.add(request.key)
-            
+
     bloom_hit_request_indexes = set(bloom_callback_container.hit.keys())
     set_hit_request_indexes = set(set_callback_container.hit.keys())
     unique_bloom_hit_request_indexes = bloom_hit_request_indexes - set_hit_request_indexes
