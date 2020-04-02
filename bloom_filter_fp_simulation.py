@@ -71,7 +71,7 @@ def run_simulation(cache_type, cache_size, trace_type, file_path, n, result_dir)
         "bloom_at_second_hit_request_bytes": bloom_at_second_hit_bytes,
     }
 
-    output_filepath = f"{result_dir}/{file_path}_bloomsetdiff_{n}.json"
+    output_filepath = f"{file_path}_bloomsetdiff_{n}.json"
     with open(f"{output_filepath}", "w") as f:
         json.dump(res, f, sort_keys=True, indent=4)
 
