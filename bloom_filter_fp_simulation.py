@@ -57,16 +57,19 @@ def run_simulation(cache_type, cache_size, trace_type, file_path, n, result_dir)
     bloom_hit_request_indexes = set(bloom_callback_container.hit.keys())
     set_hit_request_indexes = set(set_callback_container.hit.keys())
     unique_bloom_hit_request_indexes = bloom_hit_request_indexes - set_hit_request_indexes
-    unique_set_hit_request_indexes = set_hit_request_indexes - bloom_hit_request_indexes
     common_hit_request_indexes = bloom_hit_request_indexes.intersection(set_hit_request_indexes)
+    common_hit_request_bytes = sum([bloom_callback_container.hit[k] for k in common_hit_request_indexes])
+
     bloom_at_second_hit_keys = unique_bloom_hit_request_indexes.intersection(key_seen_second_time_index)
     bloom_at_second_hit_bytes = sum([bloom_callback_container.hit[k] for k in bloom_at_second_hit_keys])
+    unique_bloom_hit_request_bytes = sum([bloom_callback_container.hit[k] for k in unique_bloom_hit_request_indexes])
     res = {
+        "total_bloom_hit_count": len(bloom_hit_request_indexes),
         "total_bloom_hit_bytes": bloom_callback_container.total_byte_hit_size,
-        "total_set_hit_bytes": set_callback_container.total_byte_hit_size,
         "unique_bloom_hit_request_count": len(unique_bloom_hit_request_indexes),
-        "unique_set_hit_request_count": len(unique_set_hit_request_indexes),
+        "unique_bloom_hit_request_bytes": unique_bloom_hit_request_bytes,
         "common_hit_request_count": len(common_hit_request_indexes),
+        "common_hit_request_bytes": common_hit_request_bytes,
         "bloom_at_second_hit_request_count": len(bloom_at_second_hit_keys),
         "bloom_at_second_hit_request_bytes": bloom_at_second_hit_bytes,
     }
