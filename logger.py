@@ -3,10 +3,11 @@ import logging
 
 
 def log_window(logger, current_trace_index, trace_iterator, bmr, omr):
-    logger.info(f"[{datetime.utcnow().isoformat()}] "
-                f"[log_window] "
-                f"{current_trace_index} "
-                f"bmr: {bmr} omr: {omr}")
+    if logger:
+        logger.info(f"[{datetime.utcnow().isoformat()}] "
+                    f"[log_window] "
+                    f"{current_trace_index} "
+                    f"bmr: {bmr} omr: {omr}")
     print(f"[{datetime.utcnow().isoformat()}] "
           f"[log_window] "
           f"{current_trace_index} "
