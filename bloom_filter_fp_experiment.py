@@ -7,7 +7,7 @@ from filters import BloomFilter, SetFilter, SetFilterArgs, BloomFilterArgs
 from traces import initialize_iterator, DEFAULT_TRACE_TYPE
 
 
-def run_test(trace_dir, trace_file, n, result_dir):
+def run_experiment(trace_dir, trace_file, n, result_dir):
     trace_file_path = f"{trace_dir}/{trace_file}"
     bloom_filter = BloomFilter(BloomFilterArgs(n))
     set_filter = SetFilter(SetFilterArgs())
@@ -29,7 +29,7 @@ def run_test(trace_dir, trace_file, n, result_dir):
             bloom_filter_false_positives.add(request.key)
             false_positive_count += 1
 
-        if not should_filter_set:  # at least second time key is seen
+        if not should_filter_set:  # at least second time key is seen.
             non_one_hit_wonder.add(request.key)
             non_one_hit_wonder_count += 1
         unique_keys.add(request.key)
@@ -72,4 +72,4 @@ if __name__ == "__main__":
     trace_dir = os.environ["TRACE_DIRECTORY"]
     result_dir = os.environ["BLOOM_FP_RESULT_DIRECTORY"]
 
-    run_test(trace_dir, args.traceFile, int(args.n), result_dir)
+    run_experiment(trace_dir, args.traceFile, int(args.n), result_dir)
