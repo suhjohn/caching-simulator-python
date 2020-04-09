@@ -242,7 +242,7 @@ class GDSFCache(BaseCache):
     def _evict(self):
         priority, keys = self._value_map.peekitem(0)  # item with smallest priority
         key = keys.pop(0)  # item that was inserted the oldest
-        if len(keys) != 0:
+        if len(keys) == 0:
             del self._value_map[priority]
         cache_obj = self._cache_map[key]
         self.curr_capacity -= self._cache_map[key].size
