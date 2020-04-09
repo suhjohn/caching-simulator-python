@@ -230,20 +230,20 @@ class GDSFCache(BaseCache):
         obj = self._cache_map.get(request.key)
         if obj:
             new_priority = self._compute_priority(request)
-            key_list = self._value_map[obj.priority]
-            key_list.remove(request.key)
-            if len(key_list) == 0:
+            key_dict = self._value_map[obj.priority]
+            del key_dict[request.key]
+            if len(key_dict) == 0:
                 del self._value_map[obj.priority]
-            self._value_map.setdefault(new_priority, [])
-            self._value_map[new_priority].append(request.key)
+            self._value_map.setdefault(new_priority, OrderedDict())
+            self._value_map[new_priority][request.key] = 1
             obj.priority = new_priority
             return obj
         return None
 
     def _evict(self):
-        priority, keys = self._value_map.peekitem(0)  # item with smallest priority
-        key = keys.pop(0)  # item that was inserted the oldest
-        if len(keys) == 0:
+        priority, key_dict = self._value_map.peekitem(0)  # item with smallest priority
+        key, _ = key_dict.popitem(last=False)  # item that was inserted the oldest
+        if len(key_dict) == 0:
             del self._value_map[priority]
         cache_obj = self._cache_map[key]
         self.curr_capacity -= self._cache_map[key].size
@@ -259,8 +259,8 @@ class GDSFCache(BaseCache):
         )
         priority = self._compute_priority(request)
         self._cache_map[request.key].priority = priority
-        self._value_map.setdefault(priority, [])
-        self._value_map[priority].append(request.key)
+        self._value_map.setdefault(priority, OrderedDict())
+        self._value_map[priority][request.key] = 1
         self.curr_capacity += request.size
         while self.curr_capacity > self.capacity:
             self.evict(request)
