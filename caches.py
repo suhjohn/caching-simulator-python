@@ -220,7 +220,7 @@ class GDSFCache(BaseCache):
         self._current_l = 0
 
     def _compute_priority(self, request):
-        freq = 0 if request.key not in self._cache_map else self._cache_map[request.key].frequency
+        freq = self._cache_map[request.key].frequency
         return self._current_l + (freq / request.size)
 
     def _has(self, _id):
@@ -247,10 +247,11 @@ class GDSFCache(BaseCache):
     def _admit(self, request: CacheRequest):
         if request.size > self.capacity:
             return False
-        priority = self._compute_priority(request)
         self._cache_map[request.key] = GreedyDualCacheObj(
-            request.key, request.size, request.ts, request.index, priority
+            request.key, request.size, request.ts, request.index, 0
         )
+        priority = self._compute_priority(request)
+        self._cache_map[request.key].priority = priority
         self._value_map[priority] = request.key
         self.curr_capacity += request.size
         while self.curr_capacity + request.size > self.capacity:
