@@ -148,10 +148,10 @@ class PercentileFilter(BaseFilter):
         return should_filter
 
 
-PercentileFrequencyFilterArgs = namedtuple("PercentileFrequencyFilterArgs", ["size", "percentile"])
+PercentileBloomFilterArgs = namedtuple("PercentileBloomFilterArgs", ["size", "percentile"])
 
 
-class PercentileFrequencyFilter(BaseFilter):
+class PercentileBloomFilter(BaseFilter):
 
     def __init__(self, args):
         super().__init__(args)
@@ -160,6 +160,7 @@ class PercentileFrequencyFilter(BaseFilter):
         self.window_size = args.size
         self.percentile = args.percentile
         self.percentile_index = int(args.size * (args.percentile / 100))
+        self.bloom_filter = BloomFilter(BloomFilterArgs(n=1000000))
         self.curr_index = 0
 
     def should_filter(self, request) -> bool:
@@ -168,12 +169,14 @@ class PercentileFrequencyFilter(BaseFilter):
             self.sorted_sizes.add(request.size)
             self.curr_index += 1
             return False
-
         should_filter = request.size > self.sorted_sizes[self.percentile_index]
+        if should_filter:
+            should_filter = self.bloom_filter.should_filter(request)
         oldest_req = self.sliding_window.popleft()
         self.sorted_sizes.remove(oldest_req.size)
         self.sliding_window.append(request)
         self.sorted_sizes.add(request.size)
+        self.bloom_filter.put(request.key)
         return should_filter
 
 
@@ -193,6 +196,10 @@ _name_to_cls = {
     "Percentile": {
         "filter": PercentileFilter,
         "args": PercentileFilterArgs
+    },
+    "PercentileBloom": {
+        "filter": PercentileBloomFilter,
+        "args": PercentileBloomFilterArgs
     },
     "Set": {
         "filter": SetFilter,
