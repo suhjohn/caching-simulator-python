@@ -20,7 +20,7 @@ class CacheObject:
         self.size = size
         self.ts = ts
         self.index = index
-        self.frequency = 0
+        self.frequency = 1
 
     def as_log(self, request):
         return f"{self.key} {self.size} {self.frequency} {self.ts} " \
@@ -262,7 +262,7 @@ class GDSFCache(BaseCache):
         self._value_map.setdefault(priority, [])
         self._value_map[priority].append(request.key)
         self.curr_capacity += request.size
-        while self.curr_capacity + request.size > self.capacity:
+        while self.curr_capacity > self.capacity:
             self.evict(request)
         return True
 
