@@ -1,10 +1,12 @@
 import hashlib
 from abc import ABC, abstractmethod
 from enum import IntEnum
+from heapq import heappush, heappop
 from logging import Logger
 from typing import NewType, Optional, NamedTuple
-from collections import OrderedDict, namedtuple
+from collections import OrderedDict, namedtuple, defaultdict
 from traces import CacheRequest
+from sortedcontainers import SortedDict
 
 
 class CacheState(IntEnum):
@@ -201,6 +203,61 @@ class SLRUCache(BaseCache):
             self._segment_put(i - 1, self.segments[i].evict(request))
 
 
+GDSFArgs = namedtuple("GDSFArgs", [])
+
+
+class GreedyDualCacheObj(CacheObject):
+    def __init__(self, key, size, ts, index, priority):
+        super().__init__(key, size, ts, index)
+        self.priority = priority
+
+
+class GDSFCache(BaseCache):
+    def __init__(self, capacity, args):
+        super().__init__(capacity, args)
+        self._value_map = SortedDict()
+        self._cache_map = dict()
+        self._current_l = 0
+
+    def _compute_priority(self, request):
+        freq = 0 if request.key not in self._cache_map else self._cache_map[request.key].frequency
+        return self._current_l + (freq / request.size)
+
+    def _has(self, _id):
+        return _id in self._cache_map
+
+    def _get(self, request: CacheRequest):
+        obj = self._cache_map.get(request.key)
+        if obj:
+            new_priority = self._compute_priority(request)
+            self._value_map[request.key] = new_priority
+            obj.priority = new_priority
+            return obj
+        return None
+
+    def _evict(self):
+        priority, key = self._value_map.popitem(0)  # item with smallest priority
+        cache_obj = self._cache_map[key]
+        self.curr_capacity -= self._cache_map[key].size
+        self._current_l = priority
+        del self._value_map[priority]
+        del self._cache_map[key]
+        return cache_obj
+
+    def _admit(self, request: CacheRequest):
+        if request.size > self.capacity:
+            return False
+        priority = self._compute_priority(request)
+        self._cache_map[request.key] = GreedyDualCacheObj(
+            request.key, request.size, request.ts, request.index, priority
+        )
+        self._value_map[priority] = request.key
+        self.curr_capacity += request.size
+        while self.curr_capacity + request.size > self.capacity:
+            self.evict(request)
+        return True
+
+
 _name_to_cls = {
     "LRU": {
         "cache": LRUCache,
@@ -210,6 +267,10 @@ _name_to_cls = {
         "cache": SLRUCache,
         "args": SLRUArgs
     },
+    "GDSF": {
+        "cache": GDSFCache,
+        "args": GDSFArgs
+    }
 }
 
 

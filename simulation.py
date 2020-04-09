@@ -34,7 +34,7 @@ class SegmentStatistics:
         self.segment_miss_count += 1
         self.segment_miss_bytes += request.size
 
-    def update_req(self, request):
+    def update_stat(self, request):
         self.segment_total_count += 1
         self.segment_total_bytes += request.size
 
@@ -100,9 +100,7 @@ class Simulation:
                 "segment_miss_bytes": self._segment_statistics.segment_miss_bytes_list,
             },
             "20p_warmup_bmr": self._segment_statistics.bmr(20),
-            "50p_warmup_bmr": self._segment_statistics.bmr(50),
             "20p_warmup_omr": self._segment_statistics.omr(20),
-            "50p_warmup_omr": self._segment_statistics.omr(50),
         }
 
     def run(self):
@@ -114,7 +112,7 @@ class Simulation:
                 self.on_miss_callback(request)
             else:
                 self.on_hit_callback(request)
-            self._segment_statistics.update_req(request)
+            self._segment_statistics.update_stat(request)
             if self._curr_trace_index != 0 and self._curr_trace_index % self._ordinal_window == 0:
                 log_window(self._execution_logger, self._curr_trace_index,
                            self._trace_iterator, self._segment_statistics.curr_bmr(),
