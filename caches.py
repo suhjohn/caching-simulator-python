@@ -20,7 +20,7 @@ class CacheObject:
         self.size = size
         self.ts = ts
         self.index = index
-        self.frequency = 1
+        self.frequency = 0
 
     def as_log(self, request):
         return f"{self.key} {self.size} {self.frequency} {self.ts} " \
@@ -230,13 +230,13 @@ class GDSFCache(BaseCache):
         obj = self._cache_map.get(request.key)
         if obj:
             new_priority = self._compute_priority(request)
-            self._value_map[obj.priority].remove(request.key)
-            if len(self._value_map[obj.priority]) == 0:
+            key_list = self._value_map[obj.priority]
+            key_list.remove(request.key)
+            if len(key_list) == 0:
                 del self._value_map[obj.priority]
             self._value_map.setdefault(new_priority, [])
             self._value_map[new_priority].append(request.key)
             obj.priority = new_priority
-            assert self._cache_map.get(request.key).priority == new_priority
             return obj
         return None
 
