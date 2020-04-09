@@ -59,7 +59,7 @@ if __name__ == "__main__":
     trace_dir = os.environ["TRACE_DIRECTORY"]
     eviction_log_dir = os.environ["EVICTION_LOGGING_RESULT_DIRECTORY"]
     execution_log_dir = os.environ["EXECUTION_LOGGING_RESULT_DIRECTORY"]
-    simulation_res_dir = os.environ[settings.SIMULATION_RESULT_DIRECTORY]
+    simulation_res_dir = os.environ["SIMULATION_RESULT_DIRECTORY"]
     if not os.path.exists(eviction_log_dir):
         os.makedirs(eviction_log_dir)
     if not os.path.exists(execution_log_dir):
