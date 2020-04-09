@@ -236,6 +236,7 @@ class GDSFCache(BaseCache):
             self._value_map.setdefault(new_priority, [])
             self._value_map[new_priority].append(request.key)
             obj.priority = new_priority
+            assert self._cache_map.get(request.key).priority == new_priority
             return obj
         return None
 
@@ -251,7 +252,7 @@ class GDSFCache(BaseCache):
         return cache_obj
 
     def _admit(self, request: CacheRequest):
-        if request.size > self.capacity:
+        if request.size >= self.capacity:
             return False
         self._cache_map[request.key] = GreedyDualCacheObj(
             request.key, request.size, request.ts, request.index, 0
