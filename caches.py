@@ -230,7 +230,7 @@ class GDSFCache(BaseCache):
         obj = self._cache_map.get(request.key)
         if obj:
             new_priority = self._compute_priority(request)
-            self._value_map[request.key] = new_priority
+            self._value_map[new_priority] = request.key
             obj.priority = new_priority
             return obj
         return None
