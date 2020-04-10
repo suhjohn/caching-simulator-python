@@ -4,6 +4,7 @@ from typing import NewType, NamedTuple
 from sortedcontainers import SortedList
 from collections import defaultdict, namedtuple, deque
 import bloom_filter
+from probables import CountingBloomFilter
 import math
 
 from quickselect import kthSmallest
@@ -225,18 +226,24 @@ class KPercentileBloomFilter(BaseFilter):
             int(args.size * (percentile / 100)) for percentile in self.percentiles
         ]
         self.bloom_filter_group = [
-            KBloomFilter(n=args.n, k=i) for i in range(len(self.percentiles) + 1)
+            CountingBloomFilter(args.n, false_positive_rate=0.0001) for _ in range(len(self.percentiles) + 1)
         ]
         self.curr_index = 0
 
-    def _should_filter(self, request):
+    def _find_index(self, size):
         range_min = 0
         for i, index in enumerate(self.percentile_indices):
             range_max = self.sorted_sizes[index]
-            if range_min < request.size <= range_max:
-                return self.bloom_filter_group[i].should_filter(request)
+            if range_min < size <= range_max:
+                return i
             range_min = range_max
-        return self.bloom_filter_group[-1].should_filter(request)
+        return len(self.bloom_filter_group) - 1
+
+    def _should_filter(self, request):
+        i = self._find_index(request.size)
+        count = self.bloom_filter_group[i].check(str(request.key))
+        self.bloom_filter_group[i].add(request.key)
+        return count < len(self.percentile_indices)
 
     def should_filter(self, request) -> bool:
         if self.curr_index < self.window_size:
@@ -246,6 +253,8 @@ class KPercentileBloomFilter(BaseFilter):
             return False
         should_filter = self._should_filter(request)
         oldest_req = self.sliding_window.popleft()
+        i = self._find_index(oldest_req.size)
+        self.bloom_filter_group[i].remove(oldest_req.key)
         self.sorted_sizes.remove(oldest_req.size)
         self.sliding_window.append(request)
         self.sorted_sizes.add(request.size)
