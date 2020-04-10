@@ -118,6 +118,22 @@ class BloomFilter(BaseFilter):
         return key in self._filters[0] or key in self._filters[1]
 
 
+class KBloomFilter:
+    def __init__(self, k, n):
+        args = BloomFilterArgs(n=n)
+        self.filters = [
+            BloomFilter(args) for _ in range(k)
+        ]
+
+    def should_filter(self, request):
+        should_filter = False
+        for _filter in self.filters:
+            if _filter.should_filter(request):
+                should_filter = True
+                break
+        return should_filter
+
+
 PercentileFilterArgs = namedtuple("PercentileFilterArgs", ["size", "percentile"])
 
 
@@ -180,6 +196,62 @@ class PercentileBloomFilter(BaseFilter):
         return should_filter
 
 
+KPercentileBloomFilterArgs = namedtuple(
+    "KPercentileBloomFilterArgs", [
+        "size", "percentiles", "n"
+    ]
+)
+
+
+class KPercentileBloomFilter(BaseFilter):
+    """
+    p_i        0          1           2           3
+        bfg0       bfg1       bfg2        bfg3        bfg4
+    """
+
+    def __init__(self, args):
+        super().__init__(args)
+        assert isinstance(args.percentiles, list)
+        assert len(args.percentiles) > 1
+        for percentile in args.percentiles:
+            assert isinstance(percentile, int)
+        assert len(set(args.percentiles)) != len(args.percentiles)
+
+        self.sliding_window = deque(maxlen=args.size)
+        self.sorted_sizes = SortedList()
+        self.window_size = args.size
+        self.percentiles = sorted(args.percentiles)
+        self.percentile_indices = [
+            int(args.size * (percentile / 100)) for percentile in self.percentiles
+        ]
+        self.bloom_filter_group = [
+            KBloomFilter(n=args.n, k=i) for i in range(len(self.percentiles) + 1)
+        ]
+        self.curr_index = 0
+
+    def _should_filter(self, request):
+        range_min = 0
+        for i, index in enumerate(self.percentile_indices):
+            range_max = self.sorted_sizes[self.percentile_indices[index]]
+            if range_min < request.size <= range_max:
+                return self.bloom_filter_group[i].should_filter(request)
+            range_min = range_max
+        return self.bloom_filter_group[-1].should_filter(request)
+
+    def should_filter(self, request) -> bool:
+        if self.curr_index < self.window_size:
+            self.sliding_window.append(request)
+            self.sorted_sizes.add(request.size)
+            self.curr_index += 1
+            return False
+        should_filter = self._should_filter(request)
+        oldest_req = self.sliding_window.popleft()
+        self.sorted_sizes.remove(oldest_req.size)
+        self.sliding_window.append(request)
+        self.sorted_sizes.add(request.size)
+        return should_filter
+
+
 _name_to_cls = {
     "Bloom": {
         "filter": BloomFilter,
@@ -200,6 +272,10 @@ _name_to_cls = {
     "PercentileBloom": {
         "filter": PercentileBloomFilter,
         "args": PercentileBloomFilterArgs
+    },
+    "KPercentileBloom": {
+        "filter": KPercentileBloomFilter,
+        "args": KPercentileBloomFilterArgs
     },
     "Set": {
         "filter": SetFilter,
