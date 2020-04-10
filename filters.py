@@ -232,7 +232,7 @@ class KPercentileBloomFilter(BaseFilter):
     def _should_filter(self, request):
         range_min = 0
         for i, index in enumerate(self.percentile_indices):
-            range_max = self.sorted_sizes[self.percentile_indices[index]]
+            range_max = self.sorted_sizes[index]
             if range_min < request.size <= range_max:
                 return self.bloom_filter_group[i].should_filter(request)
             range_min = range_max
