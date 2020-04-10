@@ -215,7 +215,7 @@ class KPercentileBloomFilter(BaseFilter):
         assert len(args.percentiles) > 1
         for percentile in args.percentiles:
             assert isinstance(percentile, int)
-        assert len(set(args.percentiles)) != len(args.percentiles)
+        assert len(set(args.percentiles)) == len(args.percentiles)
 
         self.sliding_window = deque(maxlen=args.size)
         self.sorted_sizes = SortedList()
