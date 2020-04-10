@@ -243,7 +243,7 @@ class KPercentileBloomFilter(BaseFilter):
         i = self._find_index(request.size)
         count = self.bloom_filter_group[i].check(str(request.key))
         self.bloom_filter_group[i].add(str(request.key))
-        return count < len(self.percentile_indices)
+        return count < i
 
     def should_filter(self, request) -> bool:
         if self.curr_index < self.window_size:
