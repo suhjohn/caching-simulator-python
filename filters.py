@@ -242,7 +242,7 @@ class KPercentileBloomFilter(BaseFilter):
     def _should_filter(self, request):
         i = self._find_index(request.size)
         count = self.bloom_filter_group[i].check(str(request.key))
-        self.bloom_filter_group[i].add(request.key)
+        self.bloom_filter_group[i].add(str(request.key))
         return count < len(self.percentile_indices)
 
     def should_filter(self, request) -> bool:
@@ -254,7 +254,7 @@ class KPercentileBloomFilter(BaseFilter):
         should_filter = self._should_filter(request)
         oldest_req = self.sliding_window.popleft()
         i = self._find_index(oldest_req.size)
-        self.bloom_filter_group[i].remove(oldest_req.key)
+        self.bloom_filter_group[i].remove(str(oldest_req.key))
         self.sorted_sizes.remove(oldest_req.size)
         self.sliding_window.append(request)
         self.sorted_sizes.add(request.size)
