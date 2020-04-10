@@ -190,10 +190,10 @@ class PercentileFilter(BaseFilter):
         return should_filter
 
 
-PercentileBloomFilterArgs = namedtuple("PercentileBloomFilterArgs", ["size", "percentile"])
+PercentileAndBloomFilterArgs = namedtuple("PercentileBloomFilterArgs", ["size", "percentile"])
 
 
-class PercentileBloomFilter(BaseFilter):
+class PercentileAndBloomFilter(BaseFilter):
 
     def __init__(self, args):
         super().__init__(args)
@@ -299,9 +299,9 @@ _name_to_cls = {
         "filter": PercentileFilter,
         "args": PercentileFilterArgs
     },
-    "PercentileBloom": {
-        "filter": PercentileBloomFilter,
-        "args": PercentileBloomFilterArgs
+    "PercentileAndBloom": {
+        "filter": PercentileAndBloomFilter,
+        "args": PercentileAndBloomFilterArgs
     },
     "KPercentileBloom": {
         "filter": KPercentileBloomFilter,
