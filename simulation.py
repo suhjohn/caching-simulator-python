@@ -120,6 +120,8 @@ class Simulation:
                 self._segment_statistics.record_segment()
             self._curr_trace_index += 1
 
+        if (self._curr_trace_index - 1) % self._ordinal_window != 0:
+            self._segment_statistics.record_segment()
         end_time = datetime.now()
         res = self.get_state()
         res["simulation_time"] = (end_time - start_time).total_seconds()
