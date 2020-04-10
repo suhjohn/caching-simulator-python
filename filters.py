@@ -239,8 +239,6 @@ class KPercentileBloomFilter(BaseFilter):
         super().__init__(args)
         assert isinstance(args.percentiles, list)
         assert len(args.percentiles) > 1
-        for percentile in args.percentiles:
-            assert isinstance(percentile, int)
         assert len(set(args.percentiles)) == len(args.percentiles)
 
         self.sliding_window = deque(maxlen=args.size)
