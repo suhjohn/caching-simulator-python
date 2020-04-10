@@ -4,7 +4,7 @@ from typing import NewType, NamedTuple
 from sortedcontainers import SortedList
 from collections import defaultdict, namedtuple, deque
 import bloom_filter
-from probables import CountingBloomFilter
+import probables
 import math
 
 from quickselect import kthSmallest
@@ -119,20 +119,45 @@ class BloomFilter(BaseFilter):
         return key in self._filters[0] or key in self._filters[1]
 
 
-class KBloomFilter:
-    def __init__(self, k, n):
-        args = BloomFilterArgs(n=n)
-        self.filters = [
-            BloomFilter(args) for _ in range(k)
-        ]
+CountingBloomFilterArgs = namedtuple("BloomFilterArgs", ["n", "count"])
 
-    def should_filter(self, request):
-        should_filter = False
-        for _filter in self.filters:
-            if _filter.should_filter(request):
-                should_filter = True
-                break
-        return should_filter
+
+class CountingBloomFilter(BaseFilter):
+    def __init__(self, args):
+        """
+         m: int, size of the filter
+        """
+        super().__init__(args)
+        self._filters = [probables.CountingBloomFilter(args.n, false_positive_rate=0.001) for _ in range(2)]
+        self._curr_filter = 0
+        self._other_filter = 1
+        self._n = args.n
+        self._i = 0
+        self._req_count = args.count
+
+    def should_filter(self, request) -> bool:
+        k = str(request.key)
+        count = self._filters[self._curr_filter].check(k) + \
+                self._filters[self._other_filter].check(k)
+        self._put(k)
+        return count < self._req_count
+
+    def remove(self, key):
+        k = str(key)
+        if self._filters[self._curr_filter].check(k) > 0:
+            self._filters[self._curr_filter].remove(k)
+        elif self._filters[self._other_filter].check(k) > 0:
+            self._filters[self._other_filter].remove(k)
+
+    def _put(self, key):
+        """  """
+        if self._i > self._n:
+            self._i = 0
+            self._other_filter, self._curr_filter = self._curr_filter, self._other_filter
+            self._filters[self._curr_filter].clear()
+
+        self._filters[self._curr_filter].add(key)
+        self._i += 1
 
 
 PercentileFilterArgs = namedtuple("PercentileFilterArgs", ["size", "percentile"])
@@ -226,7 +251,7 @@ class KPercentileBloomFilter(BaseFilter):
             int(args.size * (percentile / 100)) for percentile in self.percentiles
         ]
         self.bloom_filter_group = [
-            CountingBloomFilter(args.n, false_positive_rate=0.0001) for _ in range(len(self.percentiles) + 1)
+            CountingBloomFilter(CountingBloomFilterArgs(args.n, i)) for i in range(len(self.percentiles) + 1)
         ]
         self.curr_index = 0
 
@@ -241,9 +266,7 @@ class KPercentileBloomFilter(BaseFilter):
 
     def _should_filter(self, request):
         i = self._find_index(request.size)
-        count = self.bloom_filter_group[i].check(str(request.key))
-        self.bloom_filter_group[i].add(str(request.key))
-        return count < i
+        return self.bloom_filter_group[i].should_filter(request)
 
     def should_filter(self, request) -> bool:
         if self.curr_index < self.window_size:
