@@ -190,7 +190,7 @@ class PercentileFilter(BaseFilter):
         return should_filter
 
 
-PercentileAndBloomFilterArgs = namedtuple("PercentileBloomFilterArgs", ["size", "percentile"])
+PercentileAndBloomFilterArgs = namedtuple("PercentileBloomFilterArgs", ["size", "percentile", "n"])
 
 
 class PercentileAndBloomFilter(BaseFilter):
@@ -202,7 +202,7 @@ class PercentileAndBloomFilter(BaseFilter):
         self.window_size = args.size
         self.percentile = args.percentile
         self.percentile_index = int(args.size * (args.percentile / 100))
-        self.bloom_filter = BloomFilter(BloomFilterArgs(n=1000000))
+        self.bloom_filter = BloomFilter(BloomFilterArgs(n=int(args.n)))
         self.curr_index = 0
 
     def should_filter(self, request) -> bool:
