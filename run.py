@@ -41,7 +41,7 @@ def run(cache_type, cache_size, file_path, trace_type, filter_type, filter_args,
         res['eviction_logging'] = False
     with open(f"{simulation_res_dir}/{simulation.id}_{result_identifier}.json", "w") as f:
         json.dump(res, f, sort_keys=True, indent=4)
-
+    print(res)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
