@@ -43,7 +43,6 @@ def run(cache_type, cache_size, file_path, trace_type, filter_type, filter_args,
         json.dump(res, f, sort_keys=True, indent=4)
     print(res)
 
-
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('cacheType')
@@ -53,8 +52,8 @@ if __name__ == "__main__":
     parser.add_argument('--temporalWindowSize', default=600, type=int)
     parser.add_argument('--ordinalWindowSize', default=1000000, type=int)
     parser.add_argument('--traceType', default=DEFAULT_TRACE_TYPE, dest='traceType')
-    parser.add_argument('--filterType', default="{}", dest='filterType')
-    parser.add_argument('--filterArgs')
+    parser.add_argument('--filterType', default="Null", dest='filterType')
+    parser.add_argument('--filterArgs', default="{}")
     parser.add_argument('--resultIdentifier', default="regular", dest='resultIdentifier')
 
     args = parser.parse_args()
