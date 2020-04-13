@@ -1,3 +1,4 @@
+import hashlib
 import json
 import logging
 import os
@@ -24,15 +25,19 @@ def run(cache_type, cache_size, file_path, trace_type, filter_type, filter_args,
     caching_stack = CachingSystem(filter_instance, cache_instance)
     trace_iterator = initialize_iterator(trace_type, file_path)
     simulation = Simulation(caching_stack, trace_iterator, ordinal_window, temporal_window)
+
+    h = hashlib.blake2s(digest_size=16)
+    h.update(f"{simulation.id}_{result_identifier}".encode())
+    filename = h.hexdigest()
     if log_eviction:
         eviction_logger = setup_logger(
             "eviction_logger",
-            f"{eviction_log_dir}/{simulation.id}_eviction.log"
+            f"{eviction_log_dir}/{filename}.log"
         )
         cache_instance.set_eviction_logger(eviction_logger)
     execution_logger = setup_logger(
         "execution_logger",
-        f"{execution_log_dir}/{simulation.id}_execution.log"
+        f"{execution_log_dir}/{filename}.log"
     )
     simulation.set_execution_logger(execution_logger)
     res = simulation.run()
@@ -40,7 +45,8 @@ def run(cache_type, cache_size, file_path, trace_type, filter_type, filter_args,
         res['eviction_logging'] = True
     else:
         res['eviction_logging'] = False
-    with open(f"{simulation_res_dir}/{simulation.id}_{result_identifier}.json", "w") as f:
+    
+    with open(f"{simulation_res_dir}/{filename}.json", "w") as f:
         json.dump(res, f, sort_keys=True, indent=4)
     print(res)
 
