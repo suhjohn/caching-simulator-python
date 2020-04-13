@@ -53,7 +53,9 @@ if __name__ == "__main__":
     parser.add_argument('--ordinalWindowSize', default=1000000, type=int)
     parser.add_argument('--traceType', default=DEFAULT_TRACE_TYPE, dest='traceType')
     parser.add_argument('--filterType', default="Null", dest='filterType')
+    parser.add_argument('--filterArgs')
     parser.add_argument('--resultIdentifier', default="regular", dest='resultIdentifier')
+
     args = parser.parse_args()
 
     trace_dir = os.environ["TRACE_DIRECTORY"]
@@ -66,7 +68,7 @@ if __name__ == "__main__":
         os.makedirs(execution_log_dir)
     if not os.path.exists(simulation_res_dir):
         os.makedirs(simulation_res_dir)
-    filter_args = settings.FILTER_ARGS
+    filter_args = json.loads(args.filterArgs)
     run(
         args.cacheType,
         args.cacheSize,
