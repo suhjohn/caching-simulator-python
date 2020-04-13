@@ -3,7 +3,6 @@ import logging
 import os
 import argparse
 from datetime import datetime
-import settings
 
 from caching_system import CachingSystem
 from caches import initialize_cache
