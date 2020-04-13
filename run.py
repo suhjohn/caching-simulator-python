@@ -3,6 +3,8 @@ import logging
 import os
 import argparse
 from datetime import datetime
+from json import JSONDecodeError
+from urllib import parse
 
 from caching_system import CachingSystem
 from caches import initialize_cache
@@ -42,6 +44,7 @@ def run(cache_type, cache_size, file_path, trace_type, filter_type, filter_args,
         json.dump(res, f, sort_keys=True, indent=4)
     print(res)
 
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('cacheType')
@@ -68,7 +71,12 @@ if __name__ == "__main__":
     if not os.path.exists(simulation_res_dir):
         os.makedirs(simulation_res_dir)
 
-    filter_args = json.loads(args.filterArgs)
+    try:
+        filter_args = json.loads(args.filterArgs)
+    except JSONDecodeError:
+        filter_args = json.loads(parse.unquote(args.filterArgs))
+    except:
+        raise
     run(
         args.cacheType,
         args.cacheSize,
