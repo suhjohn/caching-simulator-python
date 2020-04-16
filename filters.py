@@ -205,6 +205,10 @@ class PercentileAndBloomFilter(BaseFilter):
         self.bloom_filter = BloomFilter(BloomFilterArgs(n=int(args.n)))
         self.curr_index = 0
 
+    @property
+    def c(self):
+        return self.sorted_sizes[self.percentile_index]
+
     def should_filter(self, request) -> bool:
         if self.curr_index < self.window_size:
             self.sliding_window.append(request)
@@ -212,8 +216,7 @@ class PercentileAndBloomFilter(BaseFilter):
             self.curr_index += 1
             return False
 
-        should_filter = request.size > self.sorted_sizes[self.percentile_index] or \
-                        self.bloom_filter.should_filter(request)
+        should_filter = request.size > self.c or self.bloom_filter.should_filter(request)
         oldest_req = self.sliding_window.popleft()
         self.sorted_sizes.remove(oldest_req.size)
         self.sliding_window.append(request)
