@@ -2,7 +2,7 @@ import hashlib
 from abc import abstractmethod, ABC
 from typing import NewType, NamedTuple
 from sortedcontainers import SortedList
-from collections import defaultdict, namedtuple, deque
+from collections import defaultdict, namedtuple, deque, Counter
 import bloom_filter
 import probables
 import math
@@ -199,6 +199,7 @@ class PercentileAndBloomFilter(BaseFilter):
         super().__init__(args)
         self.sliding_window = deque(maxlen=args.size)
         self.sorted_sizes = SortedList()
+        self.size_counter = Counter()
         self.window_size = args.size
         self.percentile = args.percentile
         self.percentile_index = int(args.size * (args.percentile / 100))
@@ -207,20 +208,36 @@ class PercentileAndBloomFilter(BaseFilter):
 
     @property
     def c(self):
-        return self.sorted_sizes[self.percentile_index]
+        return math.ceil(self.sorted_sizes[self.percentile_index])
+
+    def _get_size_index(self, size):
+        return self.sorted_sizes.bisect_left(size + 1) - 1
+
+    def insert_size(self, size):
+        if self.size_counter[size] == 0:
+            self.sorted_sizes.add(size)
+        else:
+            to_insert = self.sorted_sizes[self._get_size_index(size)] + 0.00001
+            self.sorted_sizes.add(to_insert)
+        self.size_counter[size] += 1
+
+    def remove_size(self, size):
+        self.size_counter[size] -= 1
+        del self.sorted_sizes[self._get_size_index(size)]
 
     def should_filter(self, request) -> bool:
         if self.curr_index < self.window_size:
             self.sliding_window.append(request)
-            self.sorted_sizes.add(request.size)
+            self.insert_size(request.size)
+            self.bloom_filter.put(request.key)
             self.curr_index += 1
             return False
 
         should_filter = request.size > self.c or self.bloom_filter.should_filter(request)
         oldest_req = self.sliding_window.popleft()
-        self.sorted_sizes.remove(oldest_req.size)
+        self.remove_size(oldest_req.size)
         self.sliding_window.append(request)
-        self.sorted_sizes.add(request.size)
+        self.insert_size(request.size)
         self.bloom_filter.put(request.key)
         return should_filter
 
